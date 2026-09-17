@@ -96,8 +96,8 @@ export function toggleFavorite(id: string, favorites: string[]) {
   return favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id];
 }
 
-export function getSearchResults(query: string, filter: string, favorites: string[]) {
-  return TRACKS.filter((track) => matchTrack(track, query)).filter((track) => filter === "HI-RES" ? track.quality === "HI-RES" : filter === "收藏" ? favorites.includes(track.id) : true);
+export function getSearchResults(query: string, filter: string, favorites: string[], tracks: Track[] = TRACKS) {
+  return tracks.filter((track) => matchTrack(track, query)).filter((track) => filter === "HI-RES" ? track.quality === "HI-RES" : filter === "收藏" ? favorites.includes(track.id) : true);
 }
 
 export function getSortedTracks(tracks: Track[], sort: string) {

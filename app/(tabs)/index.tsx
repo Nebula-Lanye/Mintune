@@ -3,14 +3,14 @@ import React from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { Cover, Icon, MiniPlayer, SectionTitle, TrackRow, styles as ui } from "@/components/mintune-ui";
-import { COLORS, PLAYLISTS, TRACKS, getPlaylistTracks, getTrackMeta } from "@/lib/mintune-data";
+import { COLORS } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 
 export default function HomeScreen() {
   const router = useRouter();
   const player = usePlayer();
-  const featured = TRACKS[0];
-  const recent = TRACKS.slice(0, 4);
+  const featured = player.tracks[0];
+  const recent = player.tracks.slice(0, 4);
 
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background">
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -21,10 +21,10 @@ export default function HomeScreen() {
 
       <View style={styles.greeting}><Text style={styles.eyebrow}>THURSDAY · 17 SEP</Text><Text style={styles.greetingTitle}>晚上好，Lanye</Text><Text style={styles.greetingSubtitle}>让今天的声音慢一点。</Text></View>
 
-      <Pressable onPress={() => { player.playTrack(featured); router.push("/player" as never); }} style={({ pressed }) => [styles.heroCard, pressed && ui.pressed]}>
+      {featured ? <Pressable onPress={() => { player.playTrack(featured); router.push("/player" as never); }} style={({ pressed }) => [styles.heroCard, pressed && ui.pressed]}>
         <View style={styles.heroCopy}><View style={styles.heroPill}><View style={styles.heroDot} /><Text style={styles.heroPillText}>为你推荐</Text></View><Text style={styles.heroTitle}>夜色刚刚好</Text><Text style={styles.heroDescription}>低饱和的旋律，适合一个人慢慢走。</Text><View style={styles.heroAction}><Text style={styles.heroActionText}>立即播放</Text><Icon name="play-arrow" size={18} color={COLORS.background} /></View></View>
         <View style={styles.heroArt}><Cover track={featured} size={156} radius={24} /><View style={styles.artGlow} /></View>
-      </Pressable>
+      </Pressable> : null}
 
       <View style={styles.statsRow}><Stat label="本周聆听" value="4h 32m" meta="比上周多 18%" icon="headphones" /><Stat label="收藏歌曲" value="24" meta="保持你的节奏" icon="favorite" /></View>
 
@@ -32,7 +32,7 @@ export default function HomeScreen() {
       <View style={styles.trackList}>{recent.map((track, index) => <TrackRow key={track.id} track={track} index={index} compact />)}</View>
 
       <SectionTitle title="我的歌单" action="管理" onAction={() => router.push("/(tabs)/playlists" as never)} />
-      <FlatList data={PLAYLISTS} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item.id} contentContainerStyle={styles.playlistList} renderItem={({ item }) => <PlaylistCard playlist={item} onPress={() => { player.playTrack(getPlaylistTracks(item.id)[0]); router.push("/player" as never); }} />} />
+      <FlatList data={player.playlists} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item.id} contentContainerStyle={styles.playlistList} renderItem={({ item }) => <PlaylistCard playlist={item} onPress={() => { const track = player.getPlaylistTracks(item.id)[0]; if (track) { player.playTrack(track); router.push("/player" as never); } }} />} />
 
       <View style={styles.noteCard}><Icon name="offline-pin" size={18} color={COLORS.mint} /><View style={styles.noteCopy}><Text style={styles.noteTitle}>本地优先 · 无广告</Text><Text style={styles.noteText}>音乐和播放记录只保存在这台设备上。</Text></View><Icon name="chevron-right" size={18} color={COLORS.subtle} /></View>
       <MiniPlayer />
@@ -44,9 +44,10 @@ function Stat({ label, value, meta, icon }: { label: string; value: string; meta
   return <View style={styles.statCard}><View style={styles.statTop}><Text style={styles.statLabel}>{label}</Text><Icon name={icon} size={17} color={COLORS.mint} /></View><Text style={styles.statValue}>{value}</Text><Text style={styles.statMeta}>{meta}</Text></View>;
 }
 
-function PlaylistCard({ playlist, onPress }: { playlist: (typeof PLAYLISTS)[number]; onPress: () => void }) {
-  const track = getPlaylistTracks(playlist.id)[0];
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.playlistCard, { backgroundColor: playlist.tone }, pressed && ui.pressed]}><View style={styles.playlistIcon}><Icon name={playlist.icon} size={20} color={COLORS.background} /></View><View style={styles.playlistArt}><Cover track={track} size={82} radius={18} /></View><Text style={styles.playlistName}>{playlist.name}</Text><Text style={styles.playlistMeta}>{playlist.count} 首歌</Text></Pressable>;
+function PlaylistCard({ playlist, onPress }: { playlist: { id: string; name: string; count: number; tone: string; icon: string }; onPress: () => void }) {
+  const player = usePlayer();
+  const track = player.getPlaylistTracks(playlist.id)[0];
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.playlistCard, { backgroundColor: playlist.tone }, pressed && ui.pressed]}><View style={styles.playlistIcon}><Icon name={playlist.icon as React.ComponentProps<typeof Icon>["name"]} size={20} color={COLORS.background} /></View><View style={styles.playlistArt}>{track ? <Cover track={track} size={82} radius={18} /> : null}</View><Text style={styles.playlistName}>{playlist.name}</Text><Text style={styles.playlistMeta}>{playlist.count} 首歌</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
