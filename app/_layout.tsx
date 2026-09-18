@@ -12,6 +12,7 @@ import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime } from "@/lib/_core/manus-runtime";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 import "@/lib/_core/nativewind-pressable";
 
 export const unstable_settings = { anchor: "(tabs)" };
@@ -20,7 +21,13 @@ export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   const [trpcClient] = useState(() => createTRPCClient());
 
-  useEffect(() => { initManusRuntime(); }, []);
+  useEffect(() => {
+    initManusRuntime();
+    if (Platform.OS !== "web") {
+      const timer = setTimeout(() => SplashScreen.hideAsync().catch(() => undefined), 350);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   useEffect(() => { if (Platform.OS !== "web") return; }, []);
 
   return <ThemeProvider>

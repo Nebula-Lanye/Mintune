@@ -65,10 +65,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    try { initializeDatabase(); } catch { /* Web preview can use the fallback state when native SQLite is unavailable. */ }
-    refreshDatabase();
+    const timer = setTimeout(() => {
+      try { initializeDatabase(); } catch { /* Web preview can use the fallback state when native SQLite is unavailable. */ }
+      refreshDatabase();
+    }, 0);
     if (Platform.OS !== "web") setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
     return () => {
+      clearTimeout(timer);
       const player = audioRef.current as unknown as { remove?: () => void } | null;
       player?.remove?.();
     };
