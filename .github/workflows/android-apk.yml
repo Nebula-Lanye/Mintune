@@ -1,54 +1,85 @@
-name: Build Mintune Android APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  build-apk:
-    name: Build installable Android APK
+  build-android:
+    name: Local Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      EAS_LOCAL_BUILD_SKIP_CLEANUP: "1"
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
 
-      - name: Enable pnpm
-        run: corepack enable && corepack prepare pnpm@9.12.0 --activate
-
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate native Android project
-        run: pnpm exec expo prebuild --platform android --non-interactive --no-install
-
-      - name: Setup Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Mintune-debug.apk
+      - name: Install Android platform tools
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Upload installable APK
+      - name: Install project dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Set up Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN"
+          echo "EXPO_TOKEN=$EXPO_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Restore Android signing key
+        run: |
+          mkdir -p .eas artifacts
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > .eas/mintune-release.jks
+          chmod 600 .eas/mintune-release.jks
+          cat > credentials.json <<'EOF'
+          {
+            "android": {
+              "keystore": {
+                "keystorePath": ".eas/mintune-release.jks",
+                "keystorePassword": "${{ secrets.KEYSTORE_PASSWORD }}",
+                "keyAlias": "${{ secrets.KEY_ALIAS }}",
+                "keyPassword": "${{ secrets.KEY_PASSWORD }}"
+              }
+            }
+          }
+          EOF
+
+      - name: Build APK locally
+        run: eas build --local --platform android --profile preview --non-interactive --output "$GITHUB_WORKSPACE/artifacts/mintune.apk"
+
+      - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: Mintune-Android-APK
-          path: Mintune-debug.apk
+          name: mintune-android-apk
+          path: artifacts/mintune.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
