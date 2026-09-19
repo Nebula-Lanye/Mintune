@@ -38,9 +38,17 @@ const env = {
   androidPackage: bundleId,
 };
 
+const easProjectId = process.env.EAS_PROJECT_ID || undefined;
+
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
+  owner: "lkr2312",
+  extra: {
+    eas: {
+      projectId: easProjectId,
+    },
+  },
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",

@@ -66,6 +66,13 @@ jobs:
           }
           EOF
 
+      - name: Initialize EAS project
+        run: |
+          eas init --account lkr2312 --non-interactive
+          PROJECT_ID="$(eas project:info --json | jq -r '.id // .projectId // empty')"
+          test -n "$PROJECT_ID"
+          echo "EAS_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+
       - name: Build APK locally
         run: eas build --local --platform android --profile preview --non-interactive --output "$GITHUB_WORKSPACE/artifacts/mintune.apk"
 
