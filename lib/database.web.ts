@@ -1,9 +1,9 @@
-import { DEFAULT_FAVORITES, PLAYLISTS as DEFAULT_PLAYLISTS, TRACKS as DEFAULT_TRACKS, type Track } from "@/lib/mintune-data";
+import type { Track } from "@/lib/mintune-data";
 
 export type StoredPlaylist = { id: string; name: string; count: number; tone: string; icon: string; isDefault: boolean };
 export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favorites: string[] };
 export const DATABASE_NAME = "mintune.db";
-export const DATABASE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 
 let initialized = false;
 let tracks: Track[] = [];
@@ -14,15 +14,10 @@ let playlistTracks: Record<string, string[]> = {};
 export function initializeDatabase() {
   if (initialized) return;
   initialized = true;
-  tracks = [...DEFAULT_TRACKS];
-  playlists = DEFAULT_PLAYLISTS.map((playlist) => ({ ...playlist, count: 0, isDefault: true }));
-  playlistTracks = {
-    focus: ["sea-glass", "green-light", "slow-burn", "paper-moon"],
-    "late-night": ["night-swim", "sea-glass", "paper-moon"],
-    "new-finds": ["slow-burn", "green-light", "paper-moon"],
-  };
-  playlists = playlists.map((playlist) => ({ ...playlist, count: playlistTracks[playlist.id]?.length ?? 0 }));
-  favorites = [...DEFAULT_FAVORITES];
+  tracks = [];
+  playlists = [];
+  playlistTracks = {};
+  favorites = [];
 }
 
 export function listTracks() { initializeDatabase(); return [...tracks]; }

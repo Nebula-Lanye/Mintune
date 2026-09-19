@@ -4,10 +4,9 @@ import { createPlaylist, deletePlaylist, getPlaylistTracksFromDatabase, initiali
 describe("Web database fallback", () => {
   beforeEach(() => initializeDatabase());
 
-  it("seeds default playlists and their track relationships", () => {
-    const focus = listPlaylists().find((playlist) => playlist.id === "focus");
-    expect(focus?.isDefault).toBe(true);
-    expect(getPlaylistTracksFromDatabase("focus").length).toBeGreaterThan(0);
+  it("starts with an empty library and no seeded playlists", () => {
+    expect(listPlaylists()).toHaveLength(0);
+    expect(getPlaylistTracksFromDatabase("focus")).toHaveLength(0);
   });
 
   it("creates and deletes a custom playlist", () => {

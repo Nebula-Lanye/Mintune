@@ -11,7 +11,15 @@ icon.save(out / 'mintune-icon.png', optimize=True)
 
 # Full wordmark: crop the lower logo and place it on the same dark brand field.
 logo_crop = image.crop((150, 780, 1110, 1135))
-logo = Image.new('RGB', (1200, 520), '#050D20')
+# The supplied wordmark is placed on a dark navy panel. Replace that panel
+# color so the wordmark can sit directly on Mintune's app background.
+pixels = logo_crop.load()
+for y in range(logo_crop.height):
+    for x in range(logo_crop.width):
+        r, g, b = pixels[x, y]
+        if r < 35 and g < 45 and b < 65:
+            pixels[x, y] = (16, 36, 29)
+logo = Image.new('RGB', (1200, 520), '#10241D')
 scale = min(1080 / logo_crop.width, 390 / logo_crop.height)
 resized = logo_crop.resize((round(logo_crop.width * scale), round(logo_crop.height * scale)), Image.Resampling.LANCZOS)
 logo.paste(resized, ((logo.width - resized.width) // 2, (logo.height - resized.height) // 2))

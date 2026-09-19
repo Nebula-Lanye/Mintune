@@ -9,10 +9,12 @@ import { usePlayer } from "@/lib/player-context";
 export default function LyricsScreen() {
   const router = useRouter();
   const player = usePlayer();
+  const track = player.currentTrack;
+  if (!track) return <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background"><View style={styles.empty}><Icon name="music-off" size={42} color={COLORS.muted} /><Text style={styles.emptyTitle}>暂无歌词</Text><Text style={styles.emptyText}>导入歌曲后，歌词会显示在这里。</Text></View></ScreenContainer>;
   const active = Math.min(LYRICS.length - 1, Math.floor(player.progress * LYRICS.length));
   return <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background"><View style={styles.content}>
     <View style={styles.topBar}><Pressable accessibilityLabel="返回播放器" onPress={() => router.back()} style={({ pressed }) => [styles.topButton, pressed && ui.pressed]}><Icon name="arrow-back" size={22} color={COLORS.text} /></Pressable><Text style={styles.topTitle}>歌词</Text><Pressable accessibilityLabel="关闭歌词" onPress={() => router.dismiss()} style={({ pressed }) => [styles.topButton, pressed && ui.pressed]}><Icon name="close" size={22} color={COLORS.text} /></Pressable></View>
-    <View style={styles.trackCard}><Cover track={player.currentTrack} size={48} radius={13} /><View style={styles.trackCopy}><Text style={styles.trackTitle}>{player.currentTrack.title}</Text><Text style={styles.trackArtist}>{player.currentTrack.artist} · {player.currentTrack.album}</Text></View><Icon name="volume-up" size={20} color={COLORS.mint} /></View>
+    <View style={styles.trackCard}><Cover track={track} size={48} radius={13} /><View style={styles.trackCopy}><Text style={styles.trackTitle}>{track.title}</Text><Text style={styles.trackArtist}>{track.artist} · {track.album}</Text></View><Icon name="volume-up" size={20} color={COLORS.mint} /></View>
     <ScrollView contentContainerStyle={styles.lyrics} showsVerticalScrollIndicator={false}>{LYRICS.map((line, index) => <Text key={`${line}-${index}`} style={[styles.line, index === active && styles.activeLine]}>{line}</Text>)}</ScrollView>
     <View style={styles.bottomHint}><Icon name="music-note" size={16} color={COLORS.mint} /><Text style={styles.bottomText}>歌词会随播放进度自动滚动</Text></View>
   </View></ScreenContainer>;
@@ -32,4 +34,7 @@ const styles = StyleSheet.create({
   activeLine: { color: COLORS.mint, opacity: 1, transform: [{ scale: 1.02 }] },
   bottomHint: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 13 },
   bottomText: { color: COLORS.subtle, fontSize: 10 },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
+  emptyTitle: { color: COLORS.text, fontSize: 20, fontWeight: "800", marginTop: 16 },
+  emptyText: { color: COLORS.muted, fontSize: 13, marginTop: 8 },
 });

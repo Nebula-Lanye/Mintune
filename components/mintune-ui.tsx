@@ -12,7 +12,8 @@ export function Icon({ name, size = 22, color = COLORS.text }: { name: IconName;
 }
 
 export function Cover({ track, size = 58, radius = 14, style }: { track: Track; size?: number; radius?: number; style?: StyleProp<ImageStyle> }) {
-  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={{ uri: track.coverUri }} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
+  const source = track.coverUri === "mintune-local" ? require("@/assets/images/mintune-icon.png") : { uri: track.coverUri };
+  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={source} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
 }
 
 export function QualityBadge({ quality }: { quality: Track["quality"] }) {
@@ -26,7 +27,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
 export function TrackRow({ track, index, compact = false, onPress }: { track: Track; index?: number; compact?: boolean; onPress?: (track: Track) => void }) {
   const router = useRouter();
   const player = usePlayer();
-  const isActive = player.currentTrack.id === track.id;
+  const isActive = player.currentTrack?.id === track.id;
   const handlePress = () => {
     if (onPress) onPress(track);
     else player.playTrack(track);
@@ -44,10 +45,11 @@ export function TrackRow({ track, index, compact = false, onPress }: { track: Tr
   </Pressable>;
 }
 
-export function MiniPlayer() {
+export function MiniPlayer({ floating = false, bottomOffset = 0 }: { floating?: boolean; bottomOffset?: number }) {
   const router = useRouter();
   const player = usePlayer();
-  return <Pressable onPress={() => router.push("/player" as never)} style={({ pressed }) => [styles.miniPlayer, pressed && styles.pressed]}>
+  if (!player.currentTrack) return null;
+  return <Pressable onPress={player.openPlayer} style={({ pressed }) => [styles.miniPlayer, floating && styles.miniPlayerFloating, floating && { bottom: bottomOffset }, pressed && styles.pressed]}>
     <Cover track={player.currentTrack} size={48} radius={12} />
     <View style={styles.miniInfo}><Text numberOfLines={1} style={styles.miniTitle}>{player.currentTrack.title}</Text><Text numberOfLines={1} style={styles.miniArtist}>{player.currentTrack.artist} · {player.currentTrack.quality}</Text></View>
     <Pressable accessibilityLabel={player.isPlaying ? "暂停" : "播放"} onPress={(event) => { event.stopPropagation(); player.togglePlay(); }} style={({ pressed }) => [styles.miniPlay, pressed && styles.pressed]}><Icon name={player.isPlaying ? "pause" : "play-arrow"} size={22} color={COLORS.background} /></Pressable>
@@ -89,6 +91,7 @@ export const styles = StyleSheet.create({
   miniArtist: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   miniPlay: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 17, backgroundColor: COLORS.mint },
   miniNext: { width: 30, height: 34, alignItems: "center", justifyContent: "center" },
+  miniPlayerFloating: { position: "absolute", left: 14, right: 14, bottom: 0, marginHorizontal: 0, marginBottom: 0, zIndex: 20 },
   searchBar: { height: 50, flexDirection: "row", alignItems: "center", gap: 9, borderRadius: 15, paddingHorizontal: 15, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider },
   searchInput: { flex: 1, color: COLORS.text, fontSize: 14, paddingVertical: 0 },
   pageHeader: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 22 },

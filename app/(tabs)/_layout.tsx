@@ -3,12 +3,15 @@ import { Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HapticTab } from "@/components/haptic-tab";
+import { MiniPlayer } from "@/components/mintune-ui";
 import { COLORS } from "@/lib/mintune-data";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 10 : Math.max(insets.bottom, 9);
-  return <Tabs screenOptions={{
+  return <>
+    <MiniPlayer floating bottomOffset={66 + bottomPadding} />
+    <Tabs screenOptions={{
     headerShown: false,
     tabBarActiveTintColor: COLORS.mint,
     tabBarInactiveTintColor: COLORS.subtle,
@@ -20,5 +23,6 @@ export default function TabLayout() {
     <Tabs.Screen name="library" options={{ title: "音乐库", tabBarIcon: ({ color, size }) => <MaterialIcons name="library-music" color={color} size={size} /> }} />
     <Tabs.Screen name="playlists" options={{ title: "歌单", tabBarIcon: ({ color, size }) => <MaterialIcons name="queue-music" color={color} size={size} /> }} />
     <Tabs.Screen name="settings" options={{ title: "设置", tabBarIcon: ({ color, size }) => <MaterialIcons name="tune" color={color} size={size} /> }} />
-  </Tabs>;
+    </Tabs>
+  </>;
 }

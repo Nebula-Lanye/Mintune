@@ -2,11 +2,12 @@ import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import { usePathname, useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
-import { DEFAULT_FAVORITES, DEFAULT_QUEUE, DEFAULT_TRACK_ID, PLAYLISTS, Track, getNextTrack, getPlaylistTracks as getStaticPlaylistTracks, getTrack, toggleFavorite } from "@/lib/mintune-data";
-import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlaylist as deletePlaylistRecord, getDatabaseState, getPlaylistTracksFromDatabase, initializeDatabase, listPlaylists, listTracks, removeTrackFromPlaylist, saveTrackMetadata, setFavorite, type StoredPlaylist } from "@/lib/database";
+import type { Track } from "@/lib/mintune-data";
+import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlaylist as deletePlaylistRecord, getDatabaseState, getPlaylistTracksFromDatabase, initializeDatabase, removeTrackFromPlaylist, saveTrackMetadata, setFavorite, type StoredPlaylist } from "@/lib/database";
+import { scanLocalAudio } from "@/lib/local-media";
 
 type PlayerContextValue = {
-  currentTrack: Track;
+  currentTrack: Track | null;
   tracks: Track[];
   queue: Track[];
   playlists: StoredPlaylist[];
@@ -28,6 +29,7 @@ type PlayerContextValue = {
   getPlaylistTracks: (playlistId: string) => Track[];
   saveTrackMetadata: (track: Track) => void;
   refreshDatabase: () => void;
+  scanLocalMusic: () => Promise<number>;
   openPlayer: () => void;
 };
 
@@ -36,11 +38,11 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [tracks, setTracks] = useState<Track[]>(DEFAULT_QUEUE);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [playlists, setPlaylists] = useState<StoredPlaylist[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [currentTrack, setCurrentTrack] = useState<Track>(getTrack(DEFAULT_TRACK_ID));
-  const [queue, setQueue] = useState<Track[]>(DEFAULT_QUEUE);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [queue, setQueue] = useState<Track[]>([]);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -50,108 +52,62 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     try {
       const state = getDatabaseState();
       setTracks(state.tracks);
-      setQueue((items) => items.length ? items.map((item) => state.tracks.find((track) => track.id === item.id) ?? item) : state.tracks);
+      setQueue((items) => items.length ? items.map((item) => state.tracks.find((track) => track.id === item.id) ?? item).filter(Boolean) : state.tracks);
       setPlaylists(state.playlists);
       setFavorites(state.favorites);
-      setCurrentTrack((current) => state.tracks.find((track) => track.id === current.id) ?? state.tracks[0] ?? current);
+      setCurrentTrack((current) => current ? state.tracks.find((track) => track.id === current.id) ?? state.tracks[0] ?? null : state.tracks[0] ?? null);
+      setIsPlaying((playing) => Boolean(playing && state.tracks.length));
       setIsReady(true);
     } catch {
-      setTracks(DEFAULT_QUEUE);
-      setQueue(DEFAULT_QUEUE);
-      setPlaylists(PLAYLISTS.map((playlist) => ({ ...playlist, isDefault: true })));
-      setFavorites(DEFAULT_FAVORITES);
-      setIsReady(true);
+      setTracks([]); setQueue([]); setPlaylists([]); setFavorites([]); setCurrentTrack(null); setIsPlaying(false); setIsReady(true);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try { initializeDatabase(); } catch { /* Web preview can use the fallback state when native SQLite is unavailable. */ }
-      refreshDatabase();
-    }, 0);
+    const timer = setTimeout(() => { try { initializeDatabase(); } catch { /* native SQLite is unavailable in web preview */ } refreshDatabase(); }, 0);
     if (Platform.OS !== "web") setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
-    return () => {
-      clearTimeout(timer);
-      const player = audioRef.current as unknown as { remove?: () => void } | null;
-      player?.remove?.();
-    };
+    return () => { clearTimeout(timer); (audioRef.current as unknown as { remove?: () => void } | null)?.remove?.(); };
   }, [refreshDatabase]);
 
   useEffect(() => {
-    if (!isPlaying) return;
-    const timer = setInterval(() => {
-      setProgress((value) => {
-        const nextProgress = value + 1 / Math.max(currentTrack.durationSeconds, 1);
-        if (nextProgress >= 1) {
-          const nextTrack = getNextTrack(currentTrack.id);
-          setCurrentTrack(nextTrack);
-          setProgress(0);
-          return 0;
-        }
-        return nextProgress;
-      });
-    }, 1000);
+    if (!isPlaying || !currentTrack) return;
+    const timer = setInterval(() => setProgress((value) => {
+      const nextProgress = value + 1 / Math.max(currentTrack.durationSeconds, 1);
+      if (nextProgress >= 1) { const index = tracks.findIndex((track) => track.id === currentTrack.id); const nextTrack = tracks.length ? tracks[(index + 1) % tracks.length] : null; if (nextTrack) { setCurrentTrack(nextTrack); setProgress(0); } else setIsPlaying(false); return 0; }
+      return nextProgress;
+    }), 1000);
     return () => clearInterval(timer);
-  }, [currentTrack, isPlaying]);
+  }, [currentTrack, isPlaying, tracks]);
 
   const playTrack = useCallback((track: Track) => {
-    setCurrentTrack(track);
-    setProgress(0);
-    setIsPlaying(true);
-    try {
-      (audioRef.current as unknown as { remove?: () => void } | null)?.remove?.();
-      const player = createAudioPlayer({ uri: track.sourceUri });
-      audioRef.current = player;
-      player.play();
-    } catch { /* Keep controls usable when the preview has no native audio runtime. */ }
-  }, []);
+    try { (audioRef.current as unknown as { remove?: () => void } | null)?.remove?.(); const audio = createAudioPlayer({ uri: track.sourceUri }); audioRef.current = audio; audio.play(); } catch { /* keep the local UI usable if a URI cannot be opened */ }
+    setCurrentTrack(track); setProgress(0); setIsPlaying(true); setQueue((items) => items.length ? items : tracks);
+  }, [tracks]);
 
   const togglePlay = useCallback(() => {
-    if (isPlaying) {
-      (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.();
-      setIsPlaying(false);
-      return;
-    }
+    if (!currentTrack) return;
     try {
-      if (audioRef.current) (audioRef.current as unknown as { play?: () => void }).play?.();
-      else {
-        const player = createAudioPlayer({ uri: currentTrack.sourceUri });
-        audioRef.current = player;
-        player.play();
-      }
-    } catch { /* Browser fallback still updates the visual player state. */ }
-    setIsPlaying(true);
-  }, [currentTrack.sourceUri, isPlaying]);
+      if (isPlaying) { (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.(); setIsPlaying(false); return; }
+      if (!audioRef.current) audioRef.current = createAudioPlayer({ uri: currentTrack.sourceUri });
+      (audioRef.current as unknown as { play?: () => void }).play?.(); setIsPlaying(true);
+    } catch { setIsPlaying(false); }
+  }, [currentTrack, isPlaying]);
 
-  const move = useCallback((direction: 1 | -1) => playTrack(getNextTrack(currentTrack.id, direction)), [currentTrack.id, playTrack]);
-  const seek = useCallback((value: number) => {
-    const nextProgress = Math.min(1, Math.max(0, value));
-    setProgress(nextProgress);
-    (audioRef.current as unknown as { seekTo?: (seconds: number) => void } | null)?.seekTo?.(nextProgress * currentTrack.durationSeconds);
-  }, [currentTrack.durationSeconds]);
-
-  const toggleFavoriteTrack = useCallback((trackId = currentTrack.id) => {
-    const next = toggleFavorite(trackId, favorites);
-    setFavorite(trackId, next.includes(trackId));
-    setFavorites(next);
-  }, [currentTrack.id, favorites]);
-
+  const move = useCallback((direction: 1 | -1) => { if (!currentTrack || !tracks.length) return; const index = tracks.findIndex((track) => track.id === currentTrack.id); playTrack(tracks[(index + direction + tracks.length) % tracks.length]); }, [currentTrack, playTrack, tracks]);
+  const seek = useCallback((value: number) => { if (!currentTrack) return; const nextProgress = Math.min(1, Math.max(0, value)); setProgress(nextProgress); (audioRef.current as unknown as { seekTo?: (seconds: number) => void } | null)?.seekTo?.(nextProgress * currentTrack.durationSeconds); }, [currentTrack]);
+  const toggleFavoriteTrack = useCallback((trackId = currentTrack?.id) => { if (!trackId) return; const next = favorites.includes(trackId) ? favorites.filter((item) => item !== trackId) : [...favorites, trackId]; setFavorite(trackId, next.includes(trackId)); setFavorites(next); }, [currentTrack, favorites]);
   const addToQueue = useCallback((track: Track) => setQueue((items) => items.some((item) => item.id === track.id) ? items : [...items, track]), []);
   const createPlaylist = useCallback((name: string) => { const playlist = createPlaylistRecord(name); refreshDatabase(); return playlist; }, [refreshDatabase]);
   const deletePlaylist = useCallback((id: string) => { deletePlaylistRecord(id); refreshDatabase(); }, [refreshDatabase]);
   const addTrack = useCallback((playlistId: string, trackId: string) => { addTrackToPlaylist(playlistId, trackId); refreshDatabase(); }, [refreshDatabase]);
   const removeTrack = useCallback((playlistId: string, trackId: string) => { removeTrackFromPlaylist(playlistId, trackId); refreshDatabase(); }, [refreshDatabase]);
-  const getPlaylistTracks = useCallback((playlistId: string) => { try { const result = getPlaylistTracksFromDatabase(playlistId); return result.length ? result : getStaticPlaylistTracks(playlistId); } catch { return getStaticPlaylistTracks(playlistId); } }, []);
+  const getPlaylistTracks = useCallback((playlistId: string) => { try { return getPlaylistTracksFromDatabase(playlistId); } catch { return []; } }, []);
   const saveMetadata = useCallback((track: Track) => { saveTrackMetadata(track); refreshDatabase(); }, [refreshDatabase]);
-  const openPlayer = useCallback(() => { if (pathname !== "/player") router.push("/player" as never); }, [pathname, router]);
+  const scanLocalMusic = useCallback(async () => { const imported = await scanLocalAudio(); imported.forEach(saveTrackMetadata); refreshDatabase(); return imported.length; }, [refreshDatabase, saveMetadata]);
+  const openPlayer = useCallback(() => { if (currentTrack && pathname !== "/player") router.push("/player" as never); }, [currentTrack, pathname, router]);
 
-  const value = useMemo(() => ({ currentTrack, tracks, queue, playlists, favorites, isReady, isPlaying, progress, playTrack, togglePlay, next: () => move(1), previous: () => move(-1), seek, toggleFavoriteTrack, addToQueue, createPlaylist, deletePlaylist, addTrackToPlaylist: addTrack, removeTrackFromPlaylist: removeTrack, getPlaylistTracks, saveTrackMetadata: saveMetadata, refreshDatabase, openPlayer }), [addTrack, addToQueue, createPlaylist, currentTrack, deletePlaylist, favorites, getPlaylistTracks, isPlaying, isReady, move, openPlayer, playlists, playTrack, progress, queue, refreshDatabase, removeTrack, saveMetadata, seek, toggleFavoriteTrack, togglePlay, tracks]);
-
+  const value = useMemo(() => ({ currentTrack, tracks, queue, playlists, favorites, isReady, isPlaying, progress, playTrack, togglePlay, next: () => move(1), previous: () => move(-1), seek, toggleFavoriteTrack, addToQueue, createPlaylist, deletePlaylist, addTrackToPlaylist: addTrack, removeTrackFromPlaylist: removeTrack, getPlaylistTracks, saveTrackMetadata: saveMetadata, refreshDatabase, scanLocalMusic, openPlayer }), [addTrack, addToQueue, createPlaylist, currentTrack, deletePlaylist, favorites, getPlaylistTracks, isPlaying, isReady, move, openPlayer, playlists, playTrack, progress, queue, refreshDatabase, removeTrack, saveMetadata, scanLocalMusic, seek, toggleFavoriteTrack, togglePlay, tracks]);
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }
 
-export function usePlayer() {
-  const value = useContext(PlayerContext);
-  if (!value) throw new Error("usePlayer must be used inside PlayerProvider");
-  return value;
-}
+export function usePlayer() { const value = useContext(PlayerContext); if (!value) throw new Error("usePlayer must be used inside PlayerProvider"); return value; }

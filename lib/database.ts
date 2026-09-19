@@ -1,6 +1,6 @@
 import { openDatabaseSync } from "expo-sqlite";
 import type { SQLiteDatabase } from "expo-sqlite";
-import { PLAYLISTS as DEFAULT_PLAYLISTS, TRACKS as DEFAULT_TRACKS, type Track } from "@/lib/mintune-data";
+import type { Track } from "@/lib/mintune-data";
 
 export type StoredPlaylist = { id: string; name: string; count: number; tone: string; icon: string; isDefault: boolean };
 
@@ -8,7 +8,7 @@ export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favo
 
 let database: SQLiteDatabase | null = null;
 export const DATABASE_NAME = "mintune.db";
-export const DATABASE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 
 function getDatabase() {
   if (!database) database = openDatabaseSync(DATABASE_NAME);
@@ -55,19 +55,14 @@ export function initializeDatabase() {
     FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
     );`);
   const version = db.getFirstSync<{ user_version: number }>("PRAGMA user_version")?.user_version ?? 0;
-  if (version < DATABASE_VERSION) db.execSync(`PRAGMA user_version = ${DATABASE_VERSION}`);
-
-  const count = db.getFirstSync<{ count: number }>("SELECT COUNT(*) AS count FROM tracks");
-  if (!count?.count) {
-    for (const track of DEFAULT_TRACKS) upsertTrack(track);
-    for (const playlist of DEFAULT_PLAYLISTS) {
-      createPlaylistRecord(playlist.id, playlist.name, playlist.tone, playlist.icon, true);
-    }
-    seedPlaylistTracks("focus", ["sea-glass", "green-light", "slow-burn", "paper-moon"]);
-    seedPlaylistTracks("late-night", ["night-swim", "sea-glass", "paper-moon"]);
-    seedPlaylistTracks("new-finds", ["slow-burn", "green-light", "paper-moon"]);
-    for (const id of ["sea-glass", "paper-moon"]) setFavorite(id, true);
+  if (version < 2) {
+    // v1 seeded demo tracks. Remove only those known demo records while preserving user-created data.
+    db.runSync("DELETE FROM favorites WHERE track_id IN ('sea-glass','slow-burn','green-light','night-swim','paper-moon')");
+    db.runSync("DELETE FROM playlist_tracks WHERE track_id IN ('sea-glass','slow-burn','green-light','night-swim','paper-moon')");
+    db.runSync("DELETE FROM tracks WHERE id IN ('sea-glass','slow-burn','green-light','night-swim','paper-moon')");
+    db.runSync("DELETE FROM playlists WHERE id IN ('focus','late-night','new-finds')");
   }
+  db.execSync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   return db;
 }
 
@@ -77,10 +72,6 @@ function upsertTrack(track: Track) {
 
 function createPlaylistRecord(id: string, name: string, tone: string, icon: string, isDefault = false) {
   getDatabase().runSync("INSERT OR IGNORE INTO playlists (id,name,tone,icon,is_default) VALUES (?,?,?,?,?)", id, name, tone, icon, isDefault ? 1 : 0);
-}
-
-function seedPlaylistTracks(playlistId: string, trackIds: string[]) {
-  trackIds.forEach((trackId, position) => getDatabase().runSync("INSERT OR IGNORE INTO playlist_tracks (playlist_id,track_id,position) VALUES (?,?,?)", playlistId, trackId, position));
 }
 
 function mapTrack(row: Record<string, unknown>): Track {

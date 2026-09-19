@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "1.0.0",
+  version: "1.0.1",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -64,7 +64,7 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 1,
+    versionCode: 2,
     adaptiveIcon: {
       backgroundColor: "#050D20",
       foregroundImage: "./assets/images/mintune-icon.png",
@@ -98,6 +98,14 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-sqlite",
     [
+      "expo-media-library",
+      {
+        photosPermission: "允许 Mintune 访问设备媒体，以便导入本地音乐。",
+        savePhotosPermission: "允许 Mintune 保存媒体。",
+        granularPermissions: ["audio"],
+      },
+    ],
+    [
       "expo-audio",
       {
         microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
@@ -116,9 +124,9 @@ const config: ExpoConfig = {
         image: "./assets/images/splash-icon.png",
         imageWidth: 260,
         resizeMode: "contain",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#10241D",
         dark: {
-          backgroundColor: "#000000",
+          backgroundColor: "#10241D",
         },
       },
     ],

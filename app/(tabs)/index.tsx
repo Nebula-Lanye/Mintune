@@ -24,15 +24,15 @@ export default function HomeScreen() {
       {featured ? <Pressable onPress={() => { player.playTrack(featured); router.push("/player" as never); }} style={({ pressed }) => [styles.heroCard, pressed && ui.pressed]}>
         <View style={styles.heroCopy}><View style={styles.heroPill}><View style={styles.heroDot} /><Text style={styles.heroPillText}>为你推荐</Text></View><Text style={styles.heroTitle}>夜色刚刚好</Text><Text style={styles.heroDescription}>低饱和的旋律，适合一个人慢慢走。</Text><View style={styles.heroAction}><Text style={styles.heroActionText}>立即播放</Text><Icon name="play-arrow" size={18} color={COLORS.background} /></View></View>
         <View style={styles.heroArt}><Cover track={featured} size={156} radius={24} /><View style={styles.artGlow} /></View>
-      </Pressable> : null}
+      </Pressable> : <View style={styles.emptyCard}><Icon name="music-off" size={26} color={COLORS.mint} /><Text style={styles.emptyTitle}>还没有音乐</Text><Text style={styles.emptyText}>前往音乐库扫描设备中的本地音频，开始你的第一次聆听。</Text><Pressable onPress={() => router.push("/(tabs)/library" as never)} style={styles.emptyAction}><Text style={styles.emptyActionText}>去扫描音乐</Text><Icon name="arrow-forward" size={17} color={COLORS.background} /></Pressable></View>}
 
-      <View style={styles.statsRow}><Stat label="本周聆听" value="4h 32m" meta="比上周多 18%" icon="headphones" /><Stat label="收藏歌曲" value="24" meta="保持你的节奏" icon="favorite" /></View>
+      <View style={styles.statsRow}><Stat label="本周聆听" value={player.tracks.length ? "—" : "0"} meta="导入歌曲后开始统计" icon="headphones" /><Stat label="收藏歌曲" value={String(player.favorites.length)} meta="只保存在本机" icon="favorite" /></View>
 
       <SectionTitle title="继续聆听" action="查看全部" onAction={() => router.push("/(tabs)/library" as never)} />
-      <View style={styles.trackList}>{recent.map((track, index) => <TrackRow key={track.id} track={track} index={index} compact />)}</View>
+      <View style={styles.trackList}>{recent.length ? recent.map((track, index) => <TrackRow key={track.id} track={track} index={index} compact />) : <Text style={styles.emptyInline}>暂无最近播放记录</Text>}</View>
 
       <SectionTitle title="我的歌单" action="管理" onAction={() => router.push("/(tabs)/playlists" as never)} />
-      <FlatList data={player.playlists} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item.id} contentContainerStyle={styles.playlistList} renderItem={({ item }) => <PlaylistCard playlist={item} onPress={() => { const track = player.getPlaylistTracks(item.id)[0]; if (track) { player.playTrack(track); router.push("/player" as never); } }} />} />
+      {player.playlists.length ? <FlatList data={player.playlists} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item.id} contentContainerStyle={styles.playlistList} renderItem={({ item }) => <PlaylistCard playlist={item} onPress={() => { const track = player.getPlaylistTracks(item.id)[0]; if (track) { player.playTrack(track); router.push("/player" as never); } }} />} /> : <Text style={styles.emptyInline}>还没有歌单，可在歌单页创建。</Text>}
 
       <View style={styles.noteCard}><Icon name="offline-pin" size={18} color={COLORS.mint} /><View style={styles.noteCopy}><Text style={styles.noteTitle}>本地优先 · 无广告</Text><Text style={styles.noteText}>音乐和播放记录只保存在这台设备上。</Text></View><Icon name="chevron-right" size={18} color={COLORS.subtle} /></View>
       <MiniPlayer />
@@ -91,4 +91,10 @@ const styles = StyleSheet.create({
   noteCopy: { flex: 1 },
   noteTitle: { color: COLORS.mint, fontSize: 12, fontWeight: "800" },
   noteText: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
+  emptyCard: { minHeight: 190, alignItems: "center", justifyContent: "center", padding: 24, borderRadius: 26, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.divider },
+  emptyTitle: { color: COLORS.text, fontSize: 22, fontWeight: "800", marginTop: 11 },
+  emptyText: { maxWidth: 270, color: COLORS.muted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 6 },
+  emptyAction: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 16, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: COLORS.mint },
+  emptyActionText: { color: COLORS.background, fontSize: 12, fontWeight: "800" },
+  emptyInline: { color: COLORS.subtle, fontSize: 12, paddingVertical: 14 },
 });
