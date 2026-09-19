@@ -64,7 +64,7 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 3,
+    versionCode: 11105,
     adaptiveIcon: {
       backgroundColor: "#050D20",
       foregroundImage: "./assets/images/mintune-icon.png",
