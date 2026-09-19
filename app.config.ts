@@ -38,7 +38,7 @@ const env = {
   androidPackage: bundleId,
 };
 
-const easProjectId = process.env.EAS_PROJECT_ID || undefined;
+const easProjectId = "c635d111-3ee6-45b2-ac3c-c26f0df396b1";
 
 const config: ExpoConfig = {
   name: env.appName,
