@@ -60,6 +60,7 @@ Thumbs.db
 *.tgz
 *.tar.gz
 .cache/
+mintune-signing/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
