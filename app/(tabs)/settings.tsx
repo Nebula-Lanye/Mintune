@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { Icon, MiniPlayer, PageHeader, styles as ui } from "@/components/mintune-ui";
 import { APP_VERSION, COLORS, EQUALIZER_PRESETS, PLAYBACK_SPEEDS, SAMPLE_NOTE, SUPPORTED_FORMATS } from "@/lib/mintune-data";
@@ -16,6 +16,9 @@ export default function SettingsScreen() {
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background">
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <PageHeader eyebrow="YOUR SPACE" title="设置" subtitle="让播放体验更贴近你" />
+      <View style={styles.brandCard}>
+        <Image source={require("@/assets/images/mintune-logo.png")} style={styles.brandLogo} resizeMode="contain" accessibilityLabel="Mintune 薄荷音乐 Logo" />
+      </View>
       <View style={styles.profileCard}><View style={styles.avatar}><Text style={styles.avatarText}>L</Text></View><View style={styles.profileCopy}><Text style={styles.profileTitle}>Lanye 的音乐空间</Text><Text style={styles.profileSubtitle}>无需注册账号即可开始使用</Text></View><Icon name="chevron-right" size={20} color={COLORS.subtle} /></View>
 
       <SettingGroup title="外观"><SettingRow icon="dark-mode" title="深色模式" subtitle="更适合夜晚聆听" right={<Switch value={darkMode} onValueChange={setDarkMode} trackColor={{ false: COLORS.divider, true: COLORS.mint }} thumbColor={darkMode ? COLORS.background : COLORS.muted} />} /><SettingRow icon="language" title="语言" subtitle="简体中文" onPress={() => openMessage("语言", "当前版本支持简体中文。")} /></SettingGroup>
@@ -41,6 +44,8 @@ function SettingRow({ icon, title, subtitle, right, onPress }: { icon: React.Com
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 30 },
+  brandCard: { alignItems: "center", marginBottom: 18, borderRadius: 20, backgroundColor: "#050D20", overflow: "hidden" },
+  brandLogo: { width: "100%", height: 110 },
   profileCard: { flexDirection: "row", alignItems: "center", padding: 16, marginBottom: 25, borderRadius: 20, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.divider },
   avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: COLORS.mint, alignItems: "center", justifyContent: "center" },
   avatarText: { color: COLORS.background, fontSize: 22, fontWeight: "900" },
