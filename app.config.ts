@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "1.0.1",
+  version: "1.1.105",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
