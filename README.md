@@ -132,7 +132,7 @@ android: {
 | --- | --- |
 | 桌面图标 | `assets/images/icon.png` |
 | Android 图形图标 | `assets/images/mintune-icon.png` |
-| 启动页完整 Logo | `assets/images/splash-icon.png` |
+| 启动页方形安全区 Logo | `assets/images/splash-icon.png` |
 | 设置页完整 Logo | `assets/images/mintune-logo.png` |
 | Logo 生成脚本 | `scripts/prepare-brand-assets.py` |
 
@@ -140,8 +140,9 @@ android: {
 
 ```bash
 python3 scripts/prepare-brand-assets.py
-cp assets/images/mintune-logo.png assets/images/splash-icon.png
 ```
+
+启动图会自动生成在 1024×1024 的方形安全区域中，完整横向 Logo 居中放置，以避免 Android 12 及更高版本的启动屏裁切；设置页使用 `mintune-logo.png` 宽版资源。
 
 ## 项目目录
 

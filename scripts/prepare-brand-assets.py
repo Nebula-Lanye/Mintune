@@ -25,5 +25,15 @@ resized = logo_crop.resize((round(logo_crop.width * scale), round(logo_crop.heig
 logo.paste(resized, ((logo.width - resized.width) // 2, (logo.height - resized.height) // 2))
 logo.save(out / 'mintune-logo.png', optimize=True)
 
+# Android 12+ treats the splash image as a centered square icon. Keep the
+# complete horizontal wordmark inside a square safe area so it is not clipped.
+splash = Image.new('RGB', (1024, 1024), '#10241D')
+splash_width = 780
+splash_height = round(resized.height * splash_width / resized.width)
+splash_logo = resized.resize((splash_width, splash_height), Image.Resampling.LANCZOS)
+splash.paste(splash_logo, ((splash.width - splash_logo.width) // 2, (splash.height - splash_logo.height) // 2))
+splash.save(out / 'splash-icon.png', optimize=True)
+
 print('created', out / 'mintune-icon.png', icon.size)
 print('created', out / 'mintune-logo.png', logo.size)
+print('created', out / 'splash-icon.png', splash.size)
