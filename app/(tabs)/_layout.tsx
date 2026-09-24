@@ -22,7 +22,7 @@ export default function TabLayout() {
     <Tabs.Screen name="index" options={{ title: "今日聆听", tabBarIcon: ({ color, size }) => <MaterialIcons name="home-filled" color={color} size={size} /> }} />
     <Tabs.Screen name="library" options={{ title: "音乐库", tabBarIcon: ({ color, size }) => <MaterialIcons name="library-music" color={color} size={size} /> }} />
     <Tabs.Screen name="playlists" options={{ title: "歌单", tabBarIcon: ({ color, size }) => <MaterialIcons name="queue-music" color={color} size={size} /> }} />
-    <Tabs.Screen name="settings" options={{ title: "设置", tabBarIcon: ({ color, size }) => <MaterialIcons name="tune" color={color} size={size} /> }} />
+    <Tabs.Screen name="settings" options={{ title: "设置", tabBarIcon: ({ color, size }) => <MaterialIcons name="settings" color={color} size={size} /> }} />
     </Tabs>
   </>;
 }

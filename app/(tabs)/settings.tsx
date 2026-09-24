@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import Constants from "expo-constants";
 import React, { useState } from "react";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const [gapless, setGapless] = useState(true);
   const [quality, setQuality] = useState("自动");
   const [scanning, setScanning] = useState(false);
+  const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? APP_VERSION;
   const openMessage = (title: string, message: string) => Alert.alert(title, message);
   const scanMusic = async () => {
     if (scanning) return;
@@ -35,7 +37,7 @@ export default function SettingsScreen() {
 
       <SettingGroup title="本地音乐"><SettingRow icon="folder" title={scanning ? "正在扫描…" : "扫描本地音乐"} subtitle="从设备导入音乐并读取完整音频信息" onPress={scanMusic} /><SettingRow icon="storage" title="存储空间" subtitle={`本地数据库 · ${player.tracks.length} 首歌曲`} onPress={() => openMessage("存储空间", `支持的格式：${SUPPORTED_FORMATS.join("、")}`)} /><SettingRow icon="lock-outline" title="隐私优先" subtitle="不会上传你的音乐文件" onPress={() => openMessage("隐私优先", "你的音乐和播放记录只保存在这台设备上。")} /></SettingGroup>
 
-      <SettingGroup title="关于 Mintune"><SettingRow icon="info-outline" title="关于 Mintune" subtitle="为喜欢音乐的人，留一块安静的空间" onPress={() => openMessage("Mintune", `版本 ${APP_VERSION}\nsoftly in tune`)} /><SettingRow icon="feedback" title="反馈建议" subtitle="喜欢 Mintune？欢迎告诉我们你的想法" onPress={() => openMessage("反馈建议", "感谢你的反馈！请通过项目仓库提交建议。")}/></SettingGroup>
+      <SettingGroup title="关于 Mintune"><SettingRow icon="info-outline" title="关于 Mintune" subtitle={`版本 ${appVersion} · 为喜欢音乐的人，留一块安静的空间`} onPress={() => openMessage("Mintune", `版本 ${appVersion}\nsoftly in tune`)} /><SettingRow icon="feedback" title="反馈建议" subtitle="喜欢 Mintune？欢迎告诉我们你的想法" onPress={() => openMessage("反馈建议", "感谢你的反馈！请通过项目仓库提交建议。")}/></SettingGroup>
       <Text style={styles.footer}>Mintune · softly in tune · 2026.09</Text>
       <MiniPlayer />
     </ScrollView>

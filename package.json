@@ -43,6 +43,7 @@
     "expo-keep-awake": "~15.0.8",
     "expo-linking": "~8.0.10",
     "expo-media-library": "~18.2.1",
+    "expo-music-info-2": "^2.0.0",
     "expo-notifications": "~0.32.15",
     "expo-router": "~6.0.19",
     "expo-secure-store": "~15.0.8",
