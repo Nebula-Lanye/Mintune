@@ -105,7 +105,7 @@ export function getSortedTracks(tracks: Track[], sort: string) {
 }
 
 export const APP_NAME = "Mintune";
-export const APP_VERSION = "1.1.105";
+export const APP_VERSION = "1.2.105";
 export const APP_TAGLINE = "softly in tune";
 export const REPO_URL = "https://github.com/Nebula-Lanye/Mintune";
 export const SAMPLE_NOTE = "演示音频来自公开试听源。接入真实本地媒体扫描后，可替换为设备音频 URI。";
