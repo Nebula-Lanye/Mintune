@@ -13,8 +13,9 @@ export function Icon({ name, size = 22, color = COLORS.text }: { name: IconName;
 }
 
 export function Cover({ track, size = 58, radius = 14, style }: { track: Track; size?: number; radius?: number; style?: StyleProp<ImageStyle> }) {
-  const source = track.coverUri === "mintune-local" ? require("@/assets/images/mintune-icon.png") : { uri: track.coverUri };
-  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={source} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
+  const fallback = require("@/assets/images/mintune-icon.png");
+  const source = track.coverUri === "mintune-local" ? fallback : { uri: track.coverUri };
+  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={source} defaultSource={fallback} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
 }
 
 export function QualityBadge({ quality }: { quality: Track["quality"] }) {

@@ -6,6 +6,7 @@ import { decode, encode } from "base-64";
 import { Platform } from "react-native";
 import type { Track } from "@/lib/mintune-data";
 import { filenameMetadata, usesWideMetadataParser } from "@/lib/local-media-metadata";
+import { isArtworkFilename, pictureDataUri, sidecarArtworkNames } from "@/lib/cover-utils";
 
 const fallbackArtwork = "mintune-local";
 type EmbeddedMetadata = {
@@ -13,7 +14,7 @@ type EmbeddedMetadata = {
   artist?: string | null;
   album?: string | null;
   genre?: string | null;
-  picture?: { pictureData?: string | null } | null;
+  picture?: { pictureData?: string | null; format?: string | null; mime?: string | null } | null;
 };
 
 function extensionOf(filename: string) {
@@ -47,7 +48,7 @@ async function readWideMetadata(uri: string, filename: string): Promise<Embedded
       artist: metadata.common.artist,
       album: metadata.common.album,
       genre: metadata.common.genre?.[0],
-      picture: picture ? { pictureData: bytesToDataUri(picture.data, picture.format) } : null,
+      picture: picture ? { pictureData: bytesToDataUri(picture.data, picture.format), format: picture.format } : null,
     };
   } catch {
     // Unsupported tags, protected files, and inaccessible content URIs use the normal fallback.
@@ -64,6 +65,26 @@ async function readEmbeddedMetadata(uri: string, filename: string): Promise<Embe
     return metadata as EmbeddedMetadata | null;
   } catch {
     return null;
+  }
+}
+
+async function readSidecarArtwork(audioUri: string, filename: string) {
+  if (!audioUri.startsWith("file://") && !audioUri.startsWith("/")) return undefined;
+  const audioPath = audioUri.startsWith("file://") ? audioUri.slice(7) : audioUri;
+  const slash = audioPath.lastIndexOf("/");
+  if (slash < 0) return undefined;
+  const directory = audioPath.slice(0, slash);
+  try {
+    for (const name of sidecarArtworkNames(filename)) {
+      const candidate = `${directory}/${name}`;
+      const info = await FileSystem.getInfoAsync(candidate);
+      if (info.exists && !info.isDirectory) return `file://${candidate}`;
+    }
+    const files = await FileSystem.readDirectoryAsync(directory);
+    const fallback = files.find(isArtworkFilename);
+    return fallback ? `file://${directory}/${fallback}` : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -91,7 +112,8 @@ export async function scanLocalAudio(): Promise<Track[]> {
     const artist = metadata?.artist?.trim() || fallback.artist;
     const album = metadata?.album?.trim() || "设备音乐";
     const genre = metadata?.genre?.trim() || "本地音频";
-    const picture = metadata?.picture?.pictureData?.trim();
+    const picture = pictureDataUri(metadata?.picture);
+    const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename);
 
     return {
       id: `local-${asset.id}`,
@@ -103,7 +125,7 @@ export async function scanLocalAudio(): Promise<Track[]> {
       duration: `${String(Math.floor(durationSeconds / 60)).padStart(2, "0")}:${String(durationSeconds % 60).padStart(2, "0")}`,
       durationSeconds,
       quality: qualityFromFilename(asset.filename),
-      coverUri: picture || fallbackArtwork,
+      coverUri: picture || sidecar || fallbackArtwork,
       sourceUri,
     } satisfies Track;
   }));
