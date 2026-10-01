@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View, type GestureResponderEvent, t
 import { useRouter } from "expo-router";
 import { COLORS, Track, getQualityColor, getTrackMeta } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
+import { getPlaybackAction } from "@/lib/player-logic";
 
 type IconName = ComponentProps<typeof MaterialIcons>["name"];
 
@@ -30,6 +31,7 @@ export function TrackRow({ track, index, compact = false, onPress }: { track: Tr
   const isActive = player.currentTrack?.id === track.id;
   const handlePress = () => {
     if (onPress) onPress(track);
+    else if (getPlaybackAction(player.currentTrack?.id, track.id, player.isPlaying) !== "play-new") player.togglePlay();
     else player.playTrack(track);
   };
   return <Pressable accessibilityLabel={`播放 ${track.title}`} onPress={handlePress} style={({ pressed }) => [styles.trackRow, compact && styles.trackRowCompact, pressed && styles.pressed]}>

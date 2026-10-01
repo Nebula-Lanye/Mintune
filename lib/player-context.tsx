@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import type { Track } from "@/lib/mintune-data";
 import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlaylist as deletePlaylistRecord, getDatabaseState, getPlaylistTracksFromDatabase, initializeDatabase, removeTrackFromPlaylist, saveTrackMetadata, setFavorite, type StoredPlaylist } from "@/lib/database";
 import { scanLocalAudio } from "@/lib/local-media";
+import { disposeAudioPlayer, type DisposableAudio } from "@/lib/player-logic";
 
 type PlayerContextValue = {
   currentTrack: Track | null;
@@ -47,6 +48,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
+  const playbackTokenRef = useRef(0);
+
+  const disposeAudio = useCallback(() => {
+    const audio = audioRef.current as unknown as DisposableAudio | null;
+    audioRef.current = null;
+    disposeAudioPlayer(audio);
+  }, []);
 
   const refreshDatabase = useCallback(() => {
     try {
@@ -66,23 +74,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timer = setTimeout(() => { try { initializeDatabase(); } catch { /* native SQLite is unavailable in web preview */ } refreshDatabase(); }, 0);
     if (Platform.OS !== "web") setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
-    return () => { clearTimeout(timer); (audioRef.current as unknown as { remove?: () => void } | null)?.remove?.(); };
-  }, [refreshDatabase]);
-
-  useEffect(() => {
-    if (!isPlaying || !currentTrack) return;
-    const timer = setInterval(() => setProgress((value) => {
-      const nextProgress = value + 1 / Math.max(currentTrack.durationSeconds, 1);
-      if (nextProgress >= 1) { const index = tracks.findIndex((track) => track.id === currentTrack.id); const nextTrack = tracks.length ? tracks[(index + 1) % tracks.length] : null; if (nextTrack) { setCurrentTrack(nextTrack); setProgress(0); } else setIsPlaying(false); return 0; }
-      return nextProgress;
-    }), 1000);
-    return () => clearInterval(timer);
-  }, [currentTrack, isPlaying, tracks]);
+    return () => { clearTimeout(timer); playbackTokenRef.current += 1; disposeAudio(); };
+  }, [disposeAudio, refreshDatabase]);
 
   const playTrack = useCallback((track: Track) => {
-    try { (audioRef.current as unknown as { remove?: () => void } | null)?.remove?.(); const audio = createAudioPlayer({ uri: track.sourceUri }); audioRef.current = audio; audio.play(); } catch { /* keep the local UI usable if a URI cannot be opened */ }
-    setCurrentTrack(track); setProgress(0); setIsPlaying(true); setQueue((items) => items.length ? items : tracks);
-  }, [tracks]);
+    const token = playbackTokenRef.current + 1;
+    playbackTokenRef.current = token;
+    disposeAudio();
+    setCurrentTrack(track);
+    setProgress(0);
+    setIsPlaying(true);
+    setQueue((items) => items.length ? items : tracks);
+    try {
+      const audio = createAudioPlayer({ uri: track.sourceUri });
+      if (playbackTokenRef.current !== token) {
+        (audio as unknown as { remove?: () => void })?.remove?.();
+        return;
+      }
+      audioRef.current = audio;
+      audio.play();
+    } catch {
+      if (playbackTokenRef.current === token) setIsPlaying(false);
+    }
+  }, [disposeAudio, tracks]);
 
   const togglePlay = useCallback(() => {
     if (!currentTrack) return;
@@ -92,6 +106,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       (audioRef.current as unknown as { play?: () => void }).play?.(); setIsPlaying(true);
     } catch { setIsPlaying(false); }
   }, [currentTrack, isPlaying]);
+
+  useEffect(() => {
+    if (!isPlaying || !currentTrack) return;
+    const timer = setInterval(() => setProgress((value) => {
+      const nextProgress = value + 1 / Math.max(currentTrack.durationSeconds, 1);
+      if (nextProgress >= 1) {
+        const index = tracks.findIndex((track) => track.id === currentTrack.id);
+        const nextTrack = tracks.length ? tracks[(index + 1) % tracks.length] : null;
+        if (nextTrack) playTrack(nextTrack);
+        else { disposeAudio(); setIsPlaying(false); }
+        return 0;
+      }
+      return nextProgress;
+    }), 1000);
+    return () => clearInterval(timer);
+  }, [currentTrack, disposeAudio, isPlaying, playTrack, tracks]);
 
   const move = useCallback((direction: 1 | -1) => { if (!currentTrack || !tracks.length) return; const index = tracks.findIndex((track) => track.id === currentTrack.id); playTrack(tracks[(index + direction + tracks.length) % tracks.length]); }, [currentTrack, playTrack, tracks]);
   const seek = useCallback((value: number) => { if (!currentTrack) return; const nextProgress = Math.min(1, Math.max(0, value)); setProgress(nextProgress); (audioRef.current as unknown as { seekTo?: (seconds: number) => void } | null)?.seekTo?.(nextProgress * currentTrack.durationSeconds); }, [currentTrack]);

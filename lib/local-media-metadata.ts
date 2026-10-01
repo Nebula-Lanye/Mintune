@@ -1,3 +1,10 @@
+const WIDE_METADATA_EXTENSIONS = new Set(["flac", "alac", "m4a"]);
+
+export function usesWideMetadataParser(filename: string) {
+  const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+  return WIDE_METADATA_EXTENSIONS.has(extension);
+}
+
 export function filenameMetadata(filename: string) {
   const base = filename.replace(/\.[^/.]+$/, "").replace(/_+/g, " ").trim() || "未命名歌曲";
   const parts = base.split(/\s+[-–—]\s+/).map((part) => part.trim()).filter(Boolean);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filenameMetadata } from "@/lib/local-media-metadata";
+import { filenameMetadata, usesWideMetadataParser } from "@/lib/local-media-metadata";
 
 describe("local media metadata fallback", () => {
   it("extracts artist and title from artist-title filenames", () => {
@@ -8,5 +8,12 @@ describe("local media metadata fallback", () => {
 
   it("keeps a useful title when the filename has no artist separator", () => {
     expect(filenameMetadata("my_favorite_song.flac")).toEqual({ artist: "本地音乐", title: "my favorite song" });
+  });
+
+  it("routes lossless formats through the embedded-cover parser", () => {
+    expect(usesWideMetadataParser("album.flac")).toBe(true);
+    expect(usesWideMetadataParser("album.alac")).toBe(true);
+    expect(usesWideMetadataParser("album.m4a")).toBe(true);
+    expect(usesWideMetadataParser("album.mp3")).toBe(false);
   });
 });
