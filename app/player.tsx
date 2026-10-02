@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { Cover, Icon, QualityBadge, TrackRow, styles as ui } from "@/components/mintune-ui";
-import { COLORS, LYRICS, formatSeconds, getActiveLyric } from "@/lib/mintune-data";
+import { COLORS, formatSeconds } from "@/lib/mintune-data";
+import { currentLyricIndex, parseLrc } from "@/lib/lrc-parser";
 import { usePlayer } from "@/lib/player-context";
 
 export default function PlayerScreen() {
@@ -12,7 +13,8 @@ export default function PlayerScreen() {
   const [barWidth, setBarWidth] = useState(1);
   const track = player.currentTrack;
   if (!track) return <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background"><View style={styles.empty}><Icon name="music-off" size={42} color={COLORS.muted} /><Text style={styles.emptyTitle}>还没有正在播放的歌曲</Text><Text style={styles.emptyText}>先到音乐库扫描并导入设备音乐。</Text><Pressable onPress={() => router.back()} style={styles.emptyButton}><Text style={styles.emptyButtonText}>返回音乐库</Text></Pressable></View></ScreenContainer>;
-  const activeLyric = getActiveLyric(player.progress * track.durationSeconds, track.durationSeconds);
+  const lyricLines = parseLrc(track.lyrics ?? "");
+  const activeLyric = currentLyricIndex(lyricLines, player.progress * track.durationSeconds * 1000);
   const currentIndex = player.tracks.findIndex((item) => item.id === track.id);
   const nextTrack = player.tracks.length ? player.tracks[(currentIndex + 1 + player.tracks.length) % player.tracks.length] : track;
   return <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background">
@@ -21,12 +23,12 @@ export default function PlayerScreen() {
       <View style={styles.artworkWrap}><View style={styles.artworkHalo} /><Cover track={track} size={282} radius={30} /></View>
       <View style={styles.trackHeader}><View style={styles.trackHeaderCopy}><Text numberOfLines={1} style={styles.title}>{track.title}</Text><Text numberOfLines={1} style={styles.artist}>{track.artist} · {track.album}</Text></View><Pressable accessibilityLabel={player.favorites.includes(track.id) ? "取消收藏" : "收藏"} onPress={() => player.toggleFavoriteTrack()} style={({ pressed }) => [styles.favorite, pressed && ui.pressed]}><Icon name={player.favorites.includes(track.id) ? "favorite" : "favorite-border"} size={23} color={COLORS.mint} /></Pressable></View>
       <View style={styles.metaRow}><QualityBadge quality={track.quality} /><Text style={styles.metaText}>{track.year} · {track.genre}</Text></View>
-      <Pressable onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)} onPress={(event) => player.seek(event.nativeEvent.locationX / Math.max(barWidth, 1))} style={styles.progressPressable}><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${player.progress * 100}%` }]} /><View style={[styles.progressThumb, { left: `${player.progress * 100}%` }]} /></View></Pressable>
+      <View onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)} onStartShouldSetResponder={() => true} onResponderMove={(event) => player.seek(event.nativeEvent.locationX / Math.max(barWidth, 1))} onResponderRelease={(event) => player.seek(event.nativeEvent.locationX / Math.max(barWidth, 1))} style={styles.progressPressable}><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${player.progress * 100}%` }]} /><View style={[styles.progressThumb, { left: `${player.progress * 100}%` }]} /></View></View>
       <View style={styles.timeRow}><Text style={styles.timeText}>{formatSeconds(player.progress * track.durationSeconds)}</Text><Text style={styles.timeText}>-{formatSeconds((1 - player.progress) * track.durationSeconds)}</Text></View>
       <View style={styles.controls}><Pressable accessibilityLabel="上一首" onPress={player.previous} style={({ pressed }) => [styles.secondaryControl, pressed && ui.pressed]}><Icon name="skip-previous" size={27} color={COLORS.text} /></Pressable><Pressable accessibilityLabel={player.isPlaying ? "暂停" : "播放"} onPress={player.togglePlay} style={({ pressed }) => [styles.primaryControl, pressed && ui.pressed]}><Icon name={player.isPlaying ? "pause" : "play-arrow"} size={31} color={COLORS.background} /></Pressable><Pressable accessibilityLabel="下一首" onPress={player.next} style={({ pressed }) => [styles.secondaryControl, pressed && ui.pressed]}><Icon name="skip-next" size={27} color={COLORS.text} /></Pressable></View>
       <View style={styles.quickActions}><QuickAction icon="lyrics" label="歌词" onPress={() => router.push("/lyrics" as never)} /><QuickAction icon="equalizer" label="均衡器" onPress={() => router.push("/equalizer" as never)} /><QuickAction icon="queue-music" label="队列" onPress={() => Alert.alert("播放队列", `${player.queue.length} 首歌曲在队列中。`)} /></View>
       <View style={styles.nextCard}><View style={styles.nextHeader}><Text style={styles.nextLabel}>接下来播放</Text><Text style={styles.nextMeta}>自动接续</Text></View><TrackRow track={nextTrack} compact /></View>
-      <View style={styles.lyricHint}><Icon name="format-quote" size={17} color={COLORS.mint} /><Text numberOfLines={1} style={styles.lyricText}>{LYRICS[activeLyric]}</Text></View>
+      <View style={styles.lyricHint}><Icon name="format-quote" size={17} color={COLORS.mint} /><Text numberOfLines={1} style={styles.lyricText}>{activeLyric >= 0 ? lyricLines[activeLyric]?.text : lyricLines.length ? lyricLines[0]?.text : "暂无歌词"}</Text></View>
     </View>
   </ScreenContainer>;
 }
@@ -41,7 +43,7 @@ const styles = StyleSheet.create({
   topButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface },
   topLabel: { color: COLORS.muted, fontSize: 12, fontWeight: "800", letterSpacing: 1 },
   artworkWrap: { alignItems: "center", justifyContent: "center", marginVertical: 18 },
-  artworkHalo: { position: "absolute", width: 292, height: 292, borderRadius: 146, backgroundColor: "rgba(183,231,200,0.10)" },
+  artworkHalo: { position: "absolute", width: 292, height: 292, borderRadius: 146, backgroundColor: "rgba(94,234,212,0.10)" },
   trackHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   trackHeaderCopy: { flex: 1 },
   title: { color: COLORS.text, fontSize: 25, fontWeight: "800", letterSpacing: -0.6 },

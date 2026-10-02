@@ -1,6 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { type ComponentProps } from "react";
-import { Image, Pressable, StyleSheet, Text, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS, Track, getQualityColor, getTrackMeta } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
@@ -26,7 +26,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
   return <View style={styles.sectionTitle}><Text style={styles.sectionTitleText}>{title}</Text>{action ? <Pressable onPress={onAction} style={({ pressed }) => [styles.smallAction, pressed && styles.pressed]}><Text style={styles.smallActionText}>{action}</Text><Icon name="arrow-forward" size={16} color={COLORS.mint} /></Pressable> : null}</View>;
 }
 
-export function TrackRow({ track, index, compact = false, onPress }: { track: Track; index?: number; compact?: boolean; onPress?: (track: Track) => void }) {
+export function TrackRow({ track, index, compact = false, onPress, onLongPress }: { track: Track; index?: number; compact?: boolean; onPress?: (track: Track) => void; onLongPress?: () => void }) {
   const router = useRouter();
   const player = usePlayer();
   const isActive = player.currentTrack?.id === track.id;
@@ -35,7 +35,7 @@ export function TrackRow({ track, index, compact = false, onPress }: { track: Tr
     else if (getPlaybackAction(player.currentTrack?.id, track.id, player.isPlaying) !== "play-new") player.togglePlay();
     else player.playTrack(track);
   };
-  return <Pressable accessibilityLabel={`播放 ${track.title}`} onPress={handlePress} style={({ pressed }) => [styles.trackRow, compact && styles.trackRowCompact, pressed && styles.pressed]}>
+  return <Pressable accessibilityLabel={`播放 ${track.title}`} onPress={handlePress} onLongPress={onLongPress} style={({ pressed }) => [styles.trackRow, compact && styles.trackRowCompact, pressed && styles.pressed]}>
     {typeof index === "number" ? <Text style={styles.trackIndex}>{String(index + 1).padStart(2, "0")}</Text> : null}
     <Cover track={track} size={compact ? 48 : 54} radius={compact ? 12 : 14} />
     <View style={styles.trackInfo}>
@@ -44,12 +44,11 @@ export function TrackRow({ track, index, compact = false, onPress }: { track: Tr
     </View>
     {!compact ? <QualityBadge quality={track.quality} /> : null}
     <Text style={styles.trackDuration}>{track.duration}</Text>
-    <Pressable accessibilityLabel={`打开 ${track.title} 播放器`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); player.playTrack(track); router.push("/player" as never); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
+    <Pressable accessibilityLabel={`打开 ${track.title} 操作`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); const playlistButtons = player.playlists.map((playlist) => ({ text: `添加到「${playlist.name}」`, onPress: () => player.addTrackToPlaylist(playlist.id, track.id) })); Alert.alert(track.title, "选择操作", [{ text: player.favorites.includes(track.id) ? "取消收藏" : "收藏", onPress: () => player.toggleFavoriteTrack(track.id) }, ...playlistButtons, { text: "打开播放器", onPress: () => { player.playTrack(track); router.push("/player" as never); } }, { text: "取消", style: "cancel" }]); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
   </Pressable>;
 }
 
 export function MiniPlayer({ floating = false, bottomOffset = 0 }: { floating?: boolean; bottomOffset?: number }) {
-  const router = useRouter();
   const player = usePlayer();
   if (!player.currentTrack) return null;
   return <Pressable onPress={player.openPlayer} style={({ pressed }) => [styles.miniPlayer, floating && styles.miniPlayerFloating, floating && { bottom: bottomOffset }, pressed && styles.pressed]}>
@@ -61,7 +60,6 @@ export function MiniPlayer({ floating = false, bottomOffset = 0 }: { floating?: 
 }
 
 export function SearchBar({ value, onChangeText, placeholder = "搜索歌曲、艺人或专辑" }: { value: string; onChangeText: (value: string) => void; placeholder?: string }) {
-  const { TextInput } = require("react-native") as typeof import("react-native");
   return <View style={styles.searchBar}><Icon name="search" size={21} color={COLORS.muted} /><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={COLORS.subtle} returnKeyType="search" style={styles.searchInput} /></View>;
 }
 

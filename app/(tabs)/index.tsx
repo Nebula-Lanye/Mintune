@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { Cover, Icon, MiniPlayer, SectionTitle, TrackRow, styles as ui } from "@/components/mintune-ui";
+import { Cover, Icon, SectionTitle, TrackRow, styles as ui } from "@/components/mintune-ui";
 import { COLORS } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 
@@ -10,7 +10,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const player = usePlayer();
   const featured = player.tracks[0];
-  const recent = player.tracks.slice(0, 4);
+  const recent = player.history.length ? player.history.slice(0, 4) : [];
+  const now = new Date();
+  const greeting = now.getHours() < 6 ? "夜深了" : now.getHours() < 12 ? "早上好" : now.getHours() < 18 ? "下午好" : "晚上好";
+  const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(now);
+  const dateLabel = `${weekday} · ${now.getDate()} ${new Intl.DateTimeFormat("en-US", { month: "short" }).format(now).toUpperCase()}`;
+  const weeklyMinutes = player.history.reduce((sum, track) => sum + track.durationSeconds, 0) / 60;
 
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background">
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -19,14 +24,14 @@ export default function HomeScreen() {
         <Pressable accessibilityLabel="打开设置" onPress={() => router.push("/(tabs)/settings" as never)} style={({ pressed }) => [styles.iconButton, pressed && ui.pressed]}><Icon name="settings" size={20} color={COLORS.muted} /></Pressable>
       </View>
 
-      <View style={styles.greeting}><Text style={styles.eyebrow}>THURSDAY · 17 SEP</Text><Text style={styles.greetingTitle}>晚上好，Lanye</Text><Text style={styles.greetingSubtitle}>让今天的声音慢一点。</Text></View>
+      <View style={styles.greeting}><Text style={styles.eyebrow}>{dateLabel}</Text><Text style={styles.greetingTitle}>{greeting}，音乐爱好者</Text><Text style={styles.greetingSubtitle}>让今天的声音慢一点。</Text></View>
 
       {featured ? <Pressable onPress={() => { player.playTrack(featured); router.push("/player" as never); }} style={({ pressed }) => [styles.heroCard, pressed && ui.pressed]}>
         <View style={styles.heroCopy}><View style={styles.heroPill}><View style={styles.heroDot} /><Text style={styles.heroPillText}>为你推荐</Text></View><Text style={styles.heroTitle}>夜色刚刚好</Text><Text style={styles.heroDescription}>低饱和的旋律，适合一个人慢慢走。</Text><View style={styles.heroAction}><Text style={styles.heroActionText}>立即播放</Text><Icon name="play-arrow" size={18} color={COLORS.background} /></View></View>
         <View style={styles.heroArt}><Cover track={featured} size={156} radius={24} /><View style={styles.artGlow} /></View>
       </Pressable> : <View style={styles.emptyCard}><Icon name="music-off" size={26} color={COLORS.mint} /><Text style={styles.emptyTitle}>还没有音乐</Text><Text style={styles.emptyText}>前往音乐库扫描设备中的本地音频，开始你的第一次聆听。</Text><Pressable onPress={() => router.push("/(tabs)/library" as never)} style={styles.emptyAction}><Text style={styles.emptyActionText}>去扫描音乐</Text><Icon name="arrow-forward" size={17} color={COLORS.background} /></Pressable></View>}
 
-      <View style={styles.statsRow}><Stat label="本周聆听" value={player.tracks.length ? "—" : "0"} meta="导入歌曲后开始统计" icon="headphones" /><Stat label="收藏歌曲" value={String(player.favorites.length)} meta="只保存在本机" icon="favorite" /></View>
+      <View style={styles.statsRow}><Stat label="本周聆听" value={weeklyMinutes ? `${Math.round(weeklyMinutes)} 分钟` : "0 分钟"} meta="根据播放记录统计" icon="headphones" /><Stat label="收藏歌曲" value={String(player.favorites.length)} meta="只保存在本机" icon="favorite" /></View>
 
       <SectionTitle title="继续聆听" action="查看全部" onAction={() => router.push("/(tabs)/library" as never)} />
       <View style={styles.trackList}>{recent.length ? recent.map((track, index) => <TrackRow key={track.id} track={track} index={index} compact />) : <Text style={styles.emptyInline}>暂无最近播放记录</Text>}</View>
@@ -35,7 +40,6 @@ export default function HomeScreen() {
       {player.playlists.length ? <FlatList data={player.playlists} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item.id} contentContainerStyle={styles.playlistList} renderItem={({ item }) => <PlaylistCard playlist={item} onPress={() => { const track = player.getPlaylistTracks(item.id)[0]; if (track) { player.playTrack(track); router.push("/player" as never); } }} />} /> : <Text style={styles.emptyInline}>还没有歌单，可在歌单页创建。</Text>}
 
       <View style={styles.noteCard}><Icon name="offline-pin" size={18} color={COLORS.mint} /><View style={styles.noteCopy}><Text style={styles.noteTitle}>本地优先 · 无广告</Text><Text style={styles.noteText}>音乐和播放记录只保存在这台设备上。</Text></View><Icon name="chevron-right" size={18} color={COLORS.subtle} /></View>
-      <MiniPlayer />
     </ScrollView>
   </ScreenContainer>;
 }
@@ -65,7 +69,7 @@ const styles = StyleSheet.create({
   greetingSubtitle: { color: COLORS.muted, fontSize: 14 },
   heroCard: { minHeight: 222, overflow: "hidden", flexDirection: "row", borderRadius: 26, padding: 20, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.divider },
   heroCopy: { flex: 1, zIndex: 2, justifyContent: "space-between" },
-  heroPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(183,231,200,0.14)" },
+  heroPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(94,234,212,0.14)" },
   heroDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.mint },
   heroPillText: { color: COLORS.mint, fontSize: 10, fontWeight: "800" },
   heroTitle: { color: COLORS.text, fontSize: 27, fontWeight: "800", letterSpacing: -0.8, marginTop: 20 },
@@ -73,7 +77,7 @@ const styles = StyleSheet.create({
   heroAction: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 999, marginTop: 17, backgroundColor: COLORS.mint },
   heroActionText: { color: COLORS.background, fontSize: 12, fontWeight: "800" },
   heroArt: { width: 155, alignItems: "center", justifyContent: "center", marginRight: -10 },
-  artGlow: { position: "absolute", width: 150, height: 150, borderRadius: 75, backgroundColor: "rgba(183,231,200,0.10)", transform: [{ scale: 1.15 }], zIndex: -1 },
+  artGlow: { position: "absolute", width: 150, height: 150, borderRadius: 75, backgroundColor: "rgba(94,234,212,0.10)", transform: [{ scale: 1.15 }], zIndex: -1 },
   statsRow: { flexDirection: "row", gap: 10 },
   statCard: { flex: 1, minHeight: 98, padding: 14, borderRadius: 18, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider },
   statTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -83,11 +87,11 @@ const styles = StyleSheet.create({
   trackList: { marginTop: -6 },
   playlistList: { gap: 11, paddingRight: 14 },
   playlistCard: { width: 143, height: 155, borderRadius: 20, padding: 13, overflow: "hidden" },
-  playlistIcon: { position: "absolute", right: 12, top: 12, width: 27, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(16,36,29,0.15)" },
+  playlistIcon: { position: "absolute", right: 12, top: 12, width: 27, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(13,27,46,0.15)" },
   playlistArt: { alignItems: "flex-start", marginTop: 24 },
   playlistName: { color: COLORS.background, fontSize: 14, fontWeight: "900", marginTop: 9 },
-  playlistMeta: { color: "rgba(16,36,29,0.65)", fontSize: 10, fontWeight: "700", marginTop: 3 },
-  noteCard: { flexDirection: "row", alignItems: "center", gap: 11, padding: 15, borderRadius: 17, backgroundColor: "rgba(183,231,200,0.08)", borderWidth: 1, borderColor: "rgba(183,231,200,0.18)" },
+  playlistMeta: { color: "rgba(13,27,46,0.65)", fontSize: 10, fontWeight: "700", marginTop: 3 },
+  noteCard: { flexDirection: "row", alignItems: "center", gap: 11, padding: 15, borderRadius: 17, backgroundColor: "rgba(94,234,212,0.08)", borderWidth: 1, borderColor: "rgba(94,234,212,0.18)" },
   noteCopy: { flex: 1 },
   noteTitle: { color: COLORS.mint, fontSize: 12, fontWeight: "800" },
   noteText: { color: COLORS.muted, fontSize: 11, marginTop: 3 },

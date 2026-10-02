@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { Icon, MiniPlayer, PageHeader, SearchBar, TrackRow, styles as ui } from "@/components/mintune-ui";
+import { Icon, PageHeader, SearchBar, TrackRow, styles as ui } from "@/components/mintune-ui";
 import { COLORS, FILTERS, SORTS, getSearchResults, getSortedTracks } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 
@@ -33,7 +33,7 @@ export default function LibraryScreen() {
       {showSorts ? <View style={styles.sortMenu}>{SORTS.map((item) => <Pressable key={item} onPress={() => { setSort(item); setShowSorts(false); }} style={({ pressed }) => [styles.sortItem, pressed && ui.pressed]}><Text style={[styles.sortItemText, item === sort && styles.activeText]}>{item}</Text>{item === sort ? <Icon name="check" size={16} color={COLORS.mint} /> : null}</Pressable>)}</View> : null}
       <View style={styles.resultHeader}><Text style={styles.resultTitle}>{query ? `搜索结果 · ${results.length} 首` : "全部歌曲"}</Text><Text style={styles.resultMeta}>按{sort}排序</Text></View>
       {results.length === 0 ? <View style={styles.empty}><Icon name="music-off" size={30} color={COLORS.muted} /><Text style={styles.emptyTitle}>没有找到匹配的音乐</Text><Text style={styles.emptyText}>试试搜索歌曲名或艺人</Text></View> : null}
-    </>} ListFooterComponent={<View style={styles.footer}><Text style={styles.footerText}>{player.tracks.length ? "曲目来自你的设备，并保存在本地数据库。" : "点击右上角扫描设备中的音乐文件。"}</Text><MiniPlayer /></View>} />
+    </>} ListFooterComponent={<View style={styles.footer}><Text style={styles.footerText}>{player.tracks.length ? "曲目来自你的设备，并保存在本地数据库。" : "点击右上角扫描设备中的音乐文件。"}</Text></View>} />
   </ScreenContainer>;
 }
 
