@@ -57,7 +57,7 @@ export function initializeDatabase() {
 }
 
 function upsertTrack(track: Track) {
-  const createdAt = track.createdAt ?? Math.floor(Date.now() / 1000);
+  const createdAt = track.createdAt ?? Date.now();
   getDatabase().runSync(
     `INSERT INTO tracks (id,title,artist,album,genre,year,duration,duration_seconds,quality,cover_uri,source_uri,lyrics,created_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -78,7 +78,7 @@ function mapTrack(row: Record<string, unknown>): Track {
     id: String(row.id), title: String(row.title), artist: String(row.artist), album: String(row.album), genre: String(row.genre),
     year: String(row.year), duration: String(row.duration), durationSeconds: Number(row.duration_seconds),
     quality: String(row.quality) as Track["quality"], coverUri: String(row.cover_uri), sourceUri: String(row.source_uri),
-    lyrics: row.lyrics == null ? undefined : String(row.lyrics), createdAt: Number(row.created_at) * 1000,
+    lyrics: row.lyrics == null ? undefined : String(row.lyrics), createdAt: Number(row.created_at) < 1_000_000_000_000 ? Number(row.created_at) * 1000 : Number(row.created_at),
   };
 }
 

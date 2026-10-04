@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React, { type ComponentProps } from "react";
+import React, { useEffect, useState, type ComponentProps } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS, Track, getQualityColor, getTrackMeta } from "@/lib/mintune-data";
@@ -14,8 +14,10 @@ export function Icon({ name, size = 22, color = COLORS.text }: { name: IconName;
 
 export function Cover({ track, size = 58, radius = 14, style }: { track: Track; size?: number; radius?: number; style?: StyleProp<ImageStyle> }) {
   const fallback = require("@/assets/images/mintune-icon.png");
-  const source = track.coverUri === "mintune-local" ? fallback : { uri: track.coverUri };
-  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={source} defaultSource={fallback} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [track.coverUri]);
+  const source = failed || track.coverUri === "mintune-local" ? fallback : { uri: track.coverUri };
+  return <Image accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`} source={source} defaultSource={fallback} onError={() => setFailed(true)} style={[{ width: size, height: size, borderRadius: radius, backgroundColor: COLORS.surfaceAlt }, style]} />;
 }
 
 export function QualityBadge({ quality }: { quality: Track["quality"] }) {

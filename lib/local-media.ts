@@ -1,4 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { File } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { MusicInfo } from "expo-music-info-2";
 import { parseBuffer } from "music-metadata";
@@ -7,9 +8,10 @@ import { Platform } from "react-native";
 import type { Track } from "@/lib/mintune-data";
 import { filenameMetadata, usesWideMetadataParser } from "@/lib/local-media-metadata";
 import { isArtworkFilename, pictureDataUri, sidecarArtworkNames } from "@/lib/cover-utils";
+import { qualityFromMetadata } from "@/lib/media-quality";
 
 const fallbackArtwork = "mintune-local";
-type EmbeddedMetadata = {
+export type EmbeddedMetadata = {
   title?: string | null;
   artist?: string | null;
   album?: string | null;
@@ -25,12 +27,10 @@ function extensionOf(filename: string) {
   return filename.split(".").pop()?.toLowerCase() ?? "";
 }
 
-function qualityFromMetadata(filename: string, metadata: EmbeddedMetadata | null): Track["quality"] {
-  const extension = extensionOf(filename);
-  if (metadata?.bitsPerSample && metadata.bitsPerSample >= 24) return "HI-RES";
-  if ((metadata?.sampleRate ?? 0) >= 96000 || (metadata?.bitrate ?? 0) >= 900000) return "HI-RES";
-  if (["flac", "alac", "wav"].includes(extension)) return "LOSSLESS";
-  return (metadata?.bitrate ?? 0) >= 256000 ? "HIGH" : "HIGH";
+function lyricsText(value: unknown) {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return undefined;
+  return value.map((item) => typeof item === "string" ? item : item && typeof item === "object" && "text" in item ? String(item.text) : "").filter(Boolean).join("\n") || undefined;
 }
 
 function bytesToDataUri(bytes: Uint8Array, format: string) {
@@ -44,10 +44,13 @@ function bytesToDataUri(bytes: Uint8Array, format: string) {
 
 async function readWideMetadata(uri: string, filename: string): Promise<EmbeddedMetadata | null> {
   try {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const bytes = Uint8Array.from(decode(base64), (character) => character.charCodeAt(0));
+    let bytes: Uint8Array;
+    try {
+      bytes = await new File(uri).bytes();
+    } catch {
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      bytes = Uint8Array.from(decode(base64), (character) => character.charCodeAt(0));
+    }
     const metadata = await parseBuffer(bytes, { path: filename, size: bytes.byteLength }, { skipCovers: false });
     const picture = metadata.common.picture?.[0];
     return {
@@ -55,13 +58,14 @@ async function readWideMetadata(uri: string, filename: string): Promise<Embedded
       artist: metadata.common.artist,
       album: metadata.common.album,
       genre: metadata.common.genre?.[0],
-      lyrics: Array.isArray(metadata.common.lyrics) ? metadata.common.lyrics.join("\n") : undefined,
+      lyrics: lyricsText(metadata.common.lyrics),
       bitrate: metadata.format.bitrate,
       sampleRate: metadata.format.sampleRate,
       bitsPerSample: metadata.format.bitsPerSample,
       picture: picture ? { pictureData: bytesToDataUri(picture.data, picture.format), format: picture.format } : null,
     };
   } catch {
+    if (__DEV__) console.warn(`[Mintune] wide metadata parse failed: ${filename}`);
     // Unsupported tags, protected files, and inaccessible content URIs use the normal fallback.
     return null;
   }
@@ -69,12 +73,14 @@ async function readWideMetadata(uri: string, filename: string): Promise<Embedded
 
 async function readEmbeddedMetadata(uri: string, filename: string): Promise<EmbeddedMetadata | null> {
   if (usesWideMetadataParser(filename)) {
-    return readWideMetadata(uri, filename);
+    const wide = await readWideMetadata(uri, filename);
+    if (wide) return wide;
   }
   try {
     const metadata = await MusicInfo.getMusicInfoAsync(uri, { title: true, artist: true, album: true, genre: true, picture: true });
     return metadata as EmbeddedMetadata | null;
   } catch {
+    if (__DEV__) console.warn(`[Mintune] narrow metadata parse failed: ${filename}`);
     return null;
   }
 }

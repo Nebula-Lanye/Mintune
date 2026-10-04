@@ -1,4 +1,4 @@
-const WIDE_METADATA_EXTENSIONS = new Set(["flac", "alac", "m4a"]);
+const WIDE_METADATA_EXTENSIONS = new Set(["flac", "alac", "m4a", "mp3", "wav", "aac", "opus", "ape", "wv", "dsf", "dff"]);
 
 export function usesWideMetadataParser(filename: string) {
   const extension = filename.split(".").pop()?.toLowerCase() ?? "";

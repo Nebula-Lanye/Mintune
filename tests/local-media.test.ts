@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filenameMetadata, usesWideMetadataParser } from "@/lib/local-media-metadata";
+import { qualityFromMetadata } from "@/lib/media-quality";
 import { pictureDataUri, sidecarArtworkNames } from "@/lib/cover-utils";
 
 describe("local media metadata fallback", () => {
@@ -15,7 +16,10 @@ describe("local media metadata fallback", () => {
     expect(usesWideMetadataParser("album.flac")).toBe(true);
     expect(usesWideMetadataParser("album.alac")).toBe(true);
     expect(usesWideMetadataParser("album.m4a")).toBe(true);
-    expect(usesWideMetadataParser("album.mp3")).toBe(false);
+    expect(usesWideMetadataParser("album.mp3")).toBe(true);
+    expect(usesWideMetadataParser("album.wav")).toBe(true);
+    expect(usesWideMetadataParser("album.aac")).toBe(true);
+    expect(usesWideMetadataParser("album.dsf")).toBe(true);
   });
 
   it("turns bare embedded base64 into a renderable data URI", () => {
@@ -32,5 +36,12 @@ describe("local media metadata fallback", () => {
     ]);
     expect(sidecarArtworkNames("artist - song.flac")).toContain("folder.jpg");
     expect(sidecarArtworkNames("artist - song.flac")).toContain("cover.jpg");
+  });
+
+  it("classifies lossy bitrate into high, medium, and low tiers", () => {
+    expect(qualityFromMetadata("song.mp3", { bitrate: 320000 })).toBe("HIGH");
+    expect(qualityFromMetadata("song.mp3", { bitrate: 192000 })).toBe("MEDIUM");
+    expect(qualityFromMetadata("song.mp3", { bitrate: 96000 })).toBe("LOW");
+    expect(qualityFromMetadata("song.wav", { sampleRate: 44100, bitsPerSample: 16 })).toBe("LOSSLESS");
   });
 });
