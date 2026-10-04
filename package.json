@@ -1,6 +1,6 @@
 {
   "name": "mintune",
-  "version": "0.4.155",
+  "version": "0.4.205",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

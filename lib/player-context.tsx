@@ -4,8 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Platform } from "react-native";
 import type { Track } from "@/lib/mintune-data";
 import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlaylist as deletePlaylistRecord, getDatabaseState, getPlaylistTracksFromDatabase, initializeDatabase, listPlayHistory, recordPlay, removeTrackFromPlaylist, renamePlaylist as renamePlaylistRecord, saveTrackMetadata, setFavorite, type StoredPlaylist } from "@/lib/database";
-import { scanLocalAudio } from "@/lib/local-media";
-import type { ScanProgress } from "@/lib/local-media";
+import { scanLocalAudio, type ScanProgress } from "@/lib/local-media";
 import { disposeAudioPlayer, type DisposableAudio } from "@/lib/player-logic";
 
 type RepeatMode = "off" | "all" | "one";
@@ -70,7 +69,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const removeFromQueue = useCallback((trackId: string) => setQueue((items) => items.filter((item) => item.id === currentTrack?.id || item.id !== trackId)), [currentTrack]);
   const moveInQueue = useCallback((from: number, to: number) => setQueue((items) => { if (from < 0 || to < 0 || from >= items.length || to >= items.length) return items; const next = [...items]; const [item] = next.splice(from, 1); if (item) next.splice(to, 0, item); return next; }), []);
   const clearQueue = useCallback(() => setQueue(currentTrack ? [currentTrack] : []), [currentTrack]);
-  const scanLocalMusic = useCallback(async (onProgress?: (progress: ScanProgress) => void, directoryUri?: string) => { let importedCount = 0; const imported = await scanLocalAudio((progress) => { if (progress.track) { saveTrackMetadata(progress.track); importedCount += 1; if (importedCount % 4 === 0) refreshDatabase(); } onProgress?.(progress); }, { directoryUri }); imported.forEach((track) => saveTrackMetadata(track)); refreshDatabase(); return importedCount || imported.length; }, [refreshDatabase]);
+  const scanLocalMusic = useCallback(async (onProgress?: (progress: ScanProgress) => void, directoryUri?: string) => { let count = 0; const imported = await scanLocalAudio((progress) => { if (progress.track) { saveTrackMetadata(progress.track); count += 1; if (count % 4 === 0) refreshDatabase(); } onProgress?.(progress); }, { directoryUri }); imported.forEach(saveTrackMetadata); refreshDatabase(); return count || imported.length; }, [refreshDatabase]);
   const createPlaylist = useCallback((name: string) => { const playlist = createPlaylistRecord(name); refreshDatabase(); return playlist; }, [refreshDatabase]);
   const renamePlaylist = useCallback((id: string, name: string) => { renamePlaylistRecord(id, name); refreshDatabase(); }, [refreshDatabase]);
   const deletePlaylist = useCallback((id: string) => { deletePlaylistRecord(id); refreshDatabase(); }, [refreshDatabase]);

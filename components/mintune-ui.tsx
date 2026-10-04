@@ -1,7 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useEffect, useRef, useState, type ComponentProps } from "react";
 import { Animated, Easing, Image, Modal, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
-import { useRouter } from "expo-router";
 import { COLORS, Track, getQualityColor, getTrackMeta } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 import { getPlaybackAction } from "@/lib/player-logic";
@@ -29,9 +28,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
 }
 
 export function TrackRow({ track, index, compact = false, onPress, onLongPress }: { track: Track; index?: number; compact?: boolean; onPress?: (track: Track) => void; onLongPress?: () => void }) {
-  const router = useRouter();
   const player = usePlayer();
-  const [actionsVisible, setActionsVisible] = useState(false);
   const isActive = player.currentTrack?.id === track.id;
   const handlePress = () => {
     if (onPress) onPress(track);
@@ -47,8 +44,7 @@ export function TrackRow({ track, index, compact = false, onPress, onLongPress }
     </View>
     {!compact ? <QualityBadge quality={track.quality} /> : null}
     <Text style={styles.trackDuration}>{track.duration}</Text>
-    <Pressable accessibilityLabel={`打开 ${track.title} 操作`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); setActionsVisible(true); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
-    <Modal transparent visible={actionsVisible} animationType="slide" onRequestClose={() => setActionsVisible(false)}><View style={styles.dialogBackdrop}><View style={styles.actionCard}><Text style={styles.dialogTitle}>{track.title}</Text><Text style={styles.dialogMessage}>{track.artist} · {track.album}</Text><Pressable onPress={() => { player.toggleFavoriteTrack(track.id); setActionsVisible(false); }} style={styles.actionRow}><Icon name="favorite" size={19} color={COLORS.mint} /><Text style={styles.actionText}>{player.favorites.includes(track.id) ? "取消收藏" : "收藏歌曲"}</Text></Pressable>{player.playlists.map((playlist) => <Pressable key={playlist.id} onPress={() => { player.addTrackToPlaylist(playlist.id, track.id); setActionsVisible(false); }} style={styles.actionRow}><Icon name="playlist-add" size={19} color={COLORS.mint} /><Text style={styles.actionText}>添加到「{playlist.name}」</Text></Pressable>)}<Pressable onPress={() => { player.playTrack(track); router.push("/player" as never); setActionsVisible(false); }} style={styles.actionRow}><Icon name="open-in-new" size={19} color={COLORS.mint} /><Text style={styles.actionText}>打开播放器</Text></Pressable><Pressable onPress={() => setActionsVisible(false)} style={[styles.dialogAction, { backgroundColor: COLORS.surfaceAlt }]}><Text style={[styles.dialogActionText, { color: COLORS.text }]}>取消</Text></Pressable></View></View></Modal>
+    <Pressable accessibilityLabel={`打开 ${track.title} 操作`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
   </Pressable>;
 }
 
@@ -68,19 +64,16 @@ export function SearchBar({ value, onChangeText, placeholder = "搜索歌曲、�
 }
 
 export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: string; title: string; subtitle?: string; right?: React.ReactNode }) {
-  const progress = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.timing(progress, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [progress]);
-  return <Animated.View style={[styles.pageHeader, { opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}><View style={styles.pageHeaderCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>{right}</Animated.View>;
+  const value = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.timing(value, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [value]);
+  return <Animated.View style={[styles.pageHeader, { opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}><View style={styles.pageHeaderCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>{right}</Animated.View>;
 }
 
-export function AppDialog({ visible, title, message, action = "知道了", onClose }: { visible: boolean; title: string; message: string; action?: string; onClose: () => void }) {
-  return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}><View style={styles.dialogBackdrop}><View style={styles.dialogCard}><Text style={styles.dialogTitle}>{title}</Text><Text style={styles.dialogMessage}>{message}</Text><Pressable onPress={onClose} style={({ pressed }) => [styles.dialogAction, pressed && styles.pressed]}><Text style={styles.dialogActionText}>{action}</Text></Pressable></View></View></Modal>;
-}
-
-export function ScanProgressModal({ visible, progress, recentTracks, onClose }: { visible: boolean; progress: { phase: "preparing" | "scanning" | "completed"; current: number; total: number; filename?: string; path?: string }; recentTracks: Track[]; onClose: () => void }) {
-  const ratio = progress.total ? Math.min(1, progress.current / progress.total) : 0;
-  const scanning = progress.phase !== "completed";
-  return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}><View style={styles.dialogBackdrop}><View style={styles.scanCard}><View style={styles.scanHeader}><View><Text style={styles.dialogTitle}>{scanning ? "正在扫描音乐" : "扫描完成"}</Text><Text style={styles.scanCount}>{progress.current} / {progress.total || "—"} 首</Text></View><Pressable onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}><Icon name="close" size={20} color={COLORS.muted} /></Pressable></View><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} /></View><Text numberOfLines={1} style={styles.scanPath}>{progress.path || (scanning ? "正在读取设备媒体库…" : "已完成全部扫描")}</Text><Text style={styles.scanHint}>{scanning ? "扫描会分批进行，结果会实时写入音乐库。" : `已发现 ${progress.current} 首歌曲。`}</Text><View style={styles.scanList}>{recentTracks.slice(-6).reverse().map((track) => <View key={track.id} style={styles.scanItem}><Cover track={track} size={34} radius={8} /><View style={styles.scanItemCopy}><Text numberOfLines={1} style={styles.scanItemTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.scanItemMeta}>{track.artist} · {track.album}</Text></View><Icon name="check-circle" size={17} color={COLORS.mint} /></View>)}</View><Pressable onPress={onClose} style={({ pressed }) => [styles.dialogAction, pressed && styles.pressed]}><Text style={styles.dialogActionText}>{scanning ? "后台继续" : "完成"}</Text></Pressable></View></View></Modal>;
+export function AppDialog({ visible, title, message, onClose }: { visible: boolean; title: string; message: string; onClose: () => void }) {
+  const scale = useRef(new Animated.Value(0.92)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => { if (visible) { scale.setValue(0.92); opacity.setValue(0); Animated.parallel([Animated.spring(scale, { toValue: 1, damping: 18, stiffness: 220, mass: 0.7, useNativeDriver: true }), Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true })]).start(); } }, [visible, opacity, scale]);
+  return <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}><View style={styles.dialogBackdrop}><Animated.View style={[styles.glassDialog, { opacity, transform: [{ scale }] }]}><View style={styles.glassHighlight} /><Text style={styles.dialogTitle}>{title}</Text><Text style={styles.dialogMessage}>{message}</Text><Pressable onPress={onClose} style={({ pressed }) => [styles.dialogButton, pressed && styles.pressed]}><Text style={styles.dialogButtonText}>好的</Text></Pressable></Animated.View></View></Modal>;
 }
 
 export const styles = StyleSheet.create({
@@ -116,26 +109,11 @@ export const styles = StyleSheet.create({
   eyebrow: { color: COLORS.mint, fontSize: 11, fontWeight: "800", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" },
   pageTitle: { color: COLORS.text, fontSize: 31, lineHeight: 37, fontWeight: "800", letterSpacing: -0.8 },
   pageSubtitle: { color: COLORS.muted, fontSize: 13, lineHeight: 19, marginTop: 8 },
-  dialogBackdrop: { flex: 1, justifyContent: "center", padding: 20, backgroundColor: "rgba(0,0,0,0.62)" },
-  dialogCard: { borderRadius: 24, padding: 22, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider },
+  dialogBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "rgba(2,8,18,0.72)" },
+  glassDialog: { width: "100%", overflow: "hidden", borderRadius: 28, padding: 23, backgroundColor: "rgba(24,49,76,0.93)", borderWidth: 1, borderColor: "rgba(188,255,246,0.26)", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 18 },
+  glassHighlight: { position: "absolute", top: 0, left: 20, right: 20, height: 1, backgroundColor: "rgba(255,255,255,0.55)" },
   dialogTitle: { color: COLORS.text, fontSize: 20, fontWeight: "800" },
-  dialogMessage: { color: COLORS.muted, fontSize: 13, lineHeight: 20, marginTop: 12 },
-  dialogAction: { minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: 15, marginTop: 18, backgroundColor: COLORS.mint },
-  dialogActionText: { color: COLORS.background, fontSize: 14, fontWeight: "800" },
-  scanCard: { maxHeight: "82%", borderRadius: 25, padding: 20, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider },
-  scanHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  scanCount: { color: COLORS.mint, fontSize: 13, fontWeight: "800", marginTop: 6 },
-  closeButton: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 17, backgroundColor: COLORS.surfaceAlt },
-  progressTrack: { height: 8, overflow: "hidden", borderRadius: 4, marginTop: 18, backgroundColor: COLORS.surfaceAlt },
-  progressFill: { height: 8, borderRadius: 4, backgroundColor: COLORS.mint },
-  scanPath: { color: COLORS.text, fontSize: 11, marginTop: 12 },
-  scanHint: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 6 },
-  scanList: { minHeight: 120, maxHeight: 330, marginTop: 14 },
-  scanItem: { flexDirection: "row", alignItems: "center", gap: 9, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.divider },
-  scanItemCopy: { flex: 1, minWidth: 0 },
-  scanItemTitle: { color: COLORS.text, fontSize: 12, fontWeight: "700" },
-  scanItemMeta: { color: COLORS.muted, fontSize: 10, marginTop: 2 },
-  actionCard: { borderRadius: 25, padding: 20, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider },
-  actionRow: { minHeight: 50, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.divider },
-  actionText: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
+  dialogMessage: { color: COLORS.muted, fontSize: 13, lineHeight: 21, marginTop: 12 },
+  dialogButton: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 20, borderRadius: 16, backgroundColor: COLORS.mint },
+  dialogButtonText: { color: COLORS.background, fontSize: 14, fontWeight: "800" },
 });

@@ -3,18 +3,17 @@ import Constants from "expo-constants";
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { AppDialog, Icon, PageHeader, ScanProgressModal, styles as ui } from "@/components/mintune-ui";
-import type { ScanProgress } from "@/lib/local-media";
+import { AppDialog, Icon, PageHeader, styles as ui } from "@/components/mintune-ui";
 import { APP_VERSION, COLORS, PLAYBACK_SPEEDS, SUPPORTED_FORMATS } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 import { useThemeContext } from "@/lib/theme-provider";
 
 export default function SettingsScreen() {
   const router = useRouter(); const player = usePlayer(); const { colorScheme, setColorScheme } = useThemeContext();
-  const [quality, setQuality] = useState("自动"); const [scanning, setScanning] = useState(false); const [scanProgress, setScanProgress] = useState(0); const [scanPanel, setScanPanel] = useState<ScanProgress>({ phase: "preparing", current: 0, total: 0 }); const [scanTracks, setScanTracks] = useState<NonNullable<ScanProgress["track"]>[]>([]); const [message, setMessage] = useState<{ title: string; text: string } | null>(null);
+  const [quality, setQuality] = useState("自动"); const [scanning, setScanning] = useState(false); const [scanProgress, setScanProgress] = useState(0); const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
   const darkMode = colorScheme === "dark"; const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? APP_VERSION;
-  const openMessage = (title: string, text: string) => setMessage({ title, text });
-  const scanMusic = async () => { if (scanning) return; setScanning(true); setScanProgress(0); setScanTracks([]); setScanPanel({ phase: "preparing", current: 0, total: 0 }); try { const count = await player.scanLocalMusic((progress) => { setScanPanel(progress); setScanProgress(progress.total ? progress.current / progress.total : 0); if (progress.track) setScanTracks((items) => [...items, progress.track!]); }); setScanPanel((progress) => ({ ...progress, phase: "completed", current: count })); if (!count) openMessage("没有找到音乐", "没有在设备媒体库中找到可导入的音频文件，请确认已授予音频访问权限。"); } catch (error) { openMessage("无法扫描音乐", error instanceof Error ? error.message : "请检查音乐访问权限后重试。"); } finally { setScanning(false); } };
+  const openMessage = (title: string, message: string) => setDialog({ title, message });
+  const scanMusic = async () => { if (scanning) return; setScanning(true); setScanProgress(0); try { const count = await player.scanLocalMusic((progress) => setScanProgress(progress.total ? progress.current / progress.total : 0)); openMessage("扫描完成", count ? `已导入 ${count} 首本地音乐。` : "没有找到可导入的音频文件。"); } catch (error) { openMessage("无法扫描音乐", error instanceof Error ? error.message : "请检查音乐访问权限后重试。"); } finally { setScanning(false); } };
   const nextSpeed = PLAYBACK_SPEEDS[(PLAYBACK_SPEEDS.indexOf(player.playbackSpeed) + 1) % PLAYBACK_SPEEDS.length];
   const sleepLabel = player.sleepRemaining == null ? "关闭" : `${player.sleepRemaining} 分钟后停止`;
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background"><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -26,7 +25,7 @@ export default function SettingsScreen() {
     <SettingGroup title="本地音乐"><SettingRow icon="folder" title={scanning ? `正在扫描… ${Math.round(scanProgress * 100)}%` : "扫描本地音乐"} subtitle="分页读取设备音频并读取元数据、封面和歌词" onPress={scanMusic} /><SettingRow icon="storage" title="存储空间" subtitle={`本地数据库 · ${player.tracks.length} 首歌曲`} onPress={() => openMessage("存储空间", `支持的格式：${SUPPORTED_FORMATS.join("、")}`)} /><SettingRow icon="lock-outline" title="隐私优先" subtitle="不会上传你的音乐文件" onPress={() => openMessage("隐私优先", "你的音乐、歌词、歌单和播放历史只保存在这台设备上。")} /></SettingGroup>
     <SettingGroup title="关于 Mintune"><SettingRow icon="info-outline" title="关于 Mintune" subtitle={`版本 ${appVersion} · softly in tune`} onPress={() => openMessage("Mintune", `版本 ${appVersion}\nsoftly in tune`)} /><SettingRow icon="feedback" title="反馈建议" subtitle="欢迎通过 GitHub 项目提交建议" onPress={() => openMessage("反馈建议", "感谢你的反馈！请通过 GitHub 仓库提交建议。")}/></SettingGroup>
     <Text style={styles.footer}>Mintune · softly in tune · 2026</Text>
-  </ScrollView><ScanProgressModal visible={scanning || scanPanel.phase === "completed" && scanTracks.length > 0} progress={scanPanel} recentTracks={scanTracks} onClose={() => setScanPanel((progress) => ({ ...progress, phase: "completed" }))} /><AppDialog visible={Boolean(message)} title={message?.title ?? ""} message={message?.text ?? ""} onClose={() => setMessage(null)} /></ScreenContainer>;
+  </ScrollView><AppDialog visible={Boolean(dialog)} title={dialog?.title ?? ""} message={dialog?.message ?? ""} onClose={() => setDialog(null)} /></ScreenContainer>;
 }
 function SettingGroup({ title, children }: { title: string; children: React.ReactNode }) { return <View style={styles.group}><Text style={styles.groupTitle}>{title}</Text><View style={styles.groupCard}>{children}</View></View>; }
 function SettingRow({ icon, title, subtitle, right, onPress }: { icon: React.ComponentProps<typeof Icon>["name"]; title: string; subtitle: string; right?: React.ReactNode; onPress?: () => void }) { return <Pressable disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && ui.pressed]}><View style={styles.rowIcon}><Icon name={icon} size={19} color={COLORS.mint} /></View><View style={styles.rowCopy}><Text style={styles.rowTitle}>{title}</Text><Text numberOfLines={2} style={styles.rowSubtitle}>{subtitle}</Text></View>{right ?? <Icon name="chevron-right" size={19} color={COLORS.subtle} />}</Pressable>; }

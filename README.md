@@ -112,17 +112,15 @@ Artifact 默认保留 14 天。
 
 版本配置位于 `app.config.ts`：
 
-当前版本使用 `main` 作为测试版和 Android APK 验证分支，当前版本为 `0.4.155`。
-
 ```ts
-version: "0.4.155",
+version: "0.4.105",
 
 android: {
-  versionCode: 155,
+  versionCode: 105,
 }
 ```
 
-- `version` 是用户看到的版本号，补丁版本按版本管理文档递增 50，例如 `0.4.155`、`0.4.205`。
+- `version` 是用户看到的版本号，可以使用 `0.4.106`、`0.5.0` 等形式。
 - `android.versionCode` 是 Android 内部版本号，每次构建发布都必须递增。
 - 不要降低或重复使用 `versionCode`。
 - 不要修改 Android 签名相关 Secrets。
