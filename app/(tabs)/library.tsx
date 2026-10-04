@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { Icon, PageHeader, SearchBar, TrackRow, styles as ui } from "@/components/mintune-ui";
 import { COLORS, FILTERS, SORTS, getSearchResults, getSortedTracks } from "@/lib/mintune-data";
@@ -12,6 +12,8 @@ export default function LibraryScreen() {
   const [sort, setSort] = useState(SORTS[0]);
   const [showSorts, setShowSorts] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const scanRotation = useRef(new Animated.Value(0)).current;
+  useEffect(() => { if (!scanning) { scanRotation.stopAnimation(); scanRotation.setValue(0); return; } const animation = Animated.loop(Animated.timing(scanRotation, { toValue: 1, duration: 850, easing: Easing.linear, useNativeDriver: true })); animation.start(); return () => animation.stop(); }, [scanning, scanRotation]);
   const results = useMemo(() => getSortedTracks(getSearchResults(query, filter, player.favorites, player.tracks), sort), [filter, player.favorites, player.tracks, query, sort]);
   const scanMusic = async () => {
     if (scanning) return;
@@ -26,7 +28,7 @@ export default function LibraryScreen() {
 
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background">
     <FlatList data={results} keyExtractor={(item) => item.id} renderItem={({ item, index }) => <TrackRow track={item} index={index} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<>
-      <PageHeader eyebrow="YOUR COLLECTION" title="音乐库" subtitle="你的私人音乐档案" right={<Pressable accessibilityLabel="扫描设备音乐" disabled={scanning} onPress={scanMusic} style={({ pressed }) => [styles.scanButton, scanning && styles.scanning, pressed && ui.pressed]}><Icon name="sync" size={19} color={COLORS.mint} /></Pressable>} />
+      <PageHeader eyebrow="YOUR COLLECTION" title="音乐库" subtitle="你的私人音乐档案" right={<Pressable accessibilityLabel="扫描设备音乐" disabled={scanning} onPress={scanMusic} style={({ pressed }) => [styles.scanButton, scanning && styles.scanning, pressed && ui.pressed]}><Animated.View style={{ transform: [{ rotate: scanRotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) }] }}><Icon name="sync" size={19} color={COLORS.mint} /></Animated.View></Pressable>} />
       <SearchBar value={query} onChangeText={setQuery} />
       <FlatList data={FILTERS} horizontal keyExtractor={(item) => item} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList} renderItem={({ item }) => <Pressable onPress={() => setFilter(item)} style={({ pressed }) => [styles.filterPill, filter === item && styles.filterPillActive, pressed && ui.pressed]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>} />
       <View style={styles.librarySummary}><View><Text style={styles.summaryNumber}>{player.tracks.length}</Text><Text style={styles.summaryLabel}>首歌曲</Text></View><View style={styles.summaryDivider} /><View><Text style={styles.summaryNumber}>{new Set(player.tracks.map((track) => track.album)).size}</Text><Text style={styles.summaryLabel}>张专辑</Text></View><View style={styles.summaryDivider} /><View><Text style={styles.summaryNumber}>{player.tracks.filter((track) => track.quality === "HI-RES").length}</Text><Text style={styles.summaryLabel}>首高解析</Text></View><Pressable accessibilityLabel="选择排序方式" onPress={() => setShowSorts((value) => !value)} style={({ pressed }) => [styles.sortButton, pressed && ui.pressed]}><Icon name="sort" size={16} color={COLORS.mint} /><Text style={styles.sortText}>{sort}</Text></Pressable></View>

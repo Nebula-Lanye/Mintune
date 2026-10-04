@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { File } from "expo-file-system";
+import { Directory, File } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { MusicInfo } from "expo-music-info-2";
 import { parseBuffer } from "music-metadata";
@@ -120,6 +120,44 @@ async function readSidecarLyrics(audioUri: string) {
   }
 }
 
+type ExternalMediaFiles = { lyrics: Map<string, string>; artwork: Map<string, string>; defaultArtwork?: string };
+
+function baseName(filename: string) {
+  return filename.replace(/\.[^/.]+$/, "").trim().toLowerCase();
+}
+
+async function collectExternalMediaFiles(directoryUri?: string): Promise<ExternalMediaFiles> {
+  const result: ExternalMediaFiles = { lyrics: new Map(), artwork: new Map() };
+  if (!directoryUri) return result;
+  try {
+    const walk = (directory: Directory, depth: number) => {
+      if (depth > 4) return;
+      for (const entry of directory.list()) {
+        if (entry instanceof Directory) { walk(entry, depth + 1); continue; }
+        const key = baseName(entry.name);
+        if (/\.lrc$/i.test(entry.name)) result.lyrics.set(key, entry.uri);
+        else if (isArtworkFilename(entry.name)) {
+          result.artwork.set(key, entry.uri);
+          if (!result.defaultArtwork && /^(folder|cover|album|albumart)\./i.test(entry.name)) result.defaultArtwork = entry.uri;
+        }
+      }
+    };
+    walk(new Directory(directoryUri), 0);
+  } catch {
+    if (__DEV__) console.warn("[Mintune] selected music directory is unavailable");
+  }
+  return result;
+}
+
+async function readExternalLyrics(uri?: string) {
+  if (!uri) return undefined;
+  try { return await new File(uri).text(); } catch { return undefined; }
+}
+
+function yieldToUI() {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
 async function persistEmbeddedCover(picture: string | undefined, trackId: string) {
   if (!picture?.startsWith("data:") || Platform.OS === "web") return picture;
   const match = picture.match(/^data:([^;]+);base64,(.+)$/);
@@ -134,7 +172,7 @@ async function persistEmbeddedCover(picture: string | undefined, trackId: string
   }
 }
 
-export async function scanLocalAudio(onProgress?: (current: number, total?: number) => void): Promise<Track[]> {
+export async function scanLocalAudio(onProgress?: (current: number, total?: number) => void, options?: { directoryUri?: string }): Promise<Track[]> {
   if (Platform.OS === "web") return [];
   const available = await MediaLibrary.isAvailableAsync();
   if (!available) return [];
@@ -150,21 +188,25 @@ export async function scanLocalAudio(onProgress?: (current: number, total?: numb
     assets.push(...page.assets);
   }
   const audioAssets = assets.filter((asset) => asset.mediaType === "audio");
+  const external = await collectExternalMediaFiles(options?.directoryUri);
   let completed = 0;
   onProgress?.(0, audioAssets.length);
-  return Promise.all(audioAssets.map(async (asset) => {
+  const imported: Track[] = [];
+  for (let start = 0; start < audioAssets.length; start += 8) {
+    const batch = audioAssets.slice(start, start + 8);
+    const batchTracks = await Promise.all(batch.map(async (asset) => {
     const fallback = filenameMetadata(asset.filename);
     const info = await MediaLibrary.getAssetInfoAsync(asset.id).catch(() => null);
     const sourceUri = info?.localUri ?? asset.uri;
     const metadata = await readEmbeddedMetadata(sourceUri, asset.filename);
-    const lyrics = metadata?.lyrics?.trim() || await readSidecarLyrics(sourceUri);
+    const lyrics = metadata?.lyrics?.trim() || await readSidecarLyrics(sourceUri) || await readExternalLyrics(external.lyrics.get(baseName(asset.filename)));
     const durationSeconds = Math.max(1, Math.round(asset.duration || 0));
     const title = metadata?.title?.trim() || fallback.title;
     const artist = metadata?.artist?.trim() || fallback.artist;
     const album = metadata?.album?.trim() || "设备音乐";
     const genre = metadata?.genre?.trim() || "本地音频";
     const picture = pictureDataUri(metadata?.picture);
-    const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename);
+    const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename) || external.artwork.get(baseName(asset.filename)) || external.defaultArtwork;
     const coverUri = await persistEmbeddedCover(picture, `local-${asset.id}`) || sidecar || fallbackArtwork;
     completed += 1;
     onProgress?.(completed, audioAssets.length);
@@ -184,5 +226,9 @@ export async function scanLocalAudio(onProgress?: (current: number, total?: numb
       lyrics,
       createdAt: Date.now(),
     } satisfies Track;
-  }));
+    }));
+    imported.push(...batchTracks);
+    await yieldToUI();
+  }
+  return imported;
 }
