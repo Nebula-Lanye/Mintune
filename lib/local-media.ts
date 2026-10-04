@@ -11,6 +11,14 @@ import { isArtworkFilename, pictureDataUri, sidecarArtworkNames } from "@/lib/co
 import { qualityFromMetadata } from "@/lib/media-quality";
 
 const fallbackArtwork = "mintune-local";
+export type ScanProgress = {
+  phase: "preparing" | "scanning" | "completed";
+  current: number;
+  total: number;
+  filename?: string;
+  path?: string;
+  track?: Track;
+};
 export type EmbeddedMetadata = {
   title?: string | null;
   artist?: string | null;
@@ -144,7 +152,7 @@ async function collectExternalMediaFiles(directoryUri?: string): Promise<Externa
     };
     walk(new Directory(directoryUri), 0);
   } catch {
-    if (__DEV__) console.warn("[Mintune] selected music directory is unavailable");
+    if (__DEV__) console.warn("[Mintune] external media directory is unavailable");
   }
   return result;
 }
@@ -172,7 +180,7 @@ async function persistEmbeddedCover(picture: string | undefined, trackId: string
   }
 }
 
-export async function scanLocalAudio(onProgress?: (current: number, total?: number) => void, options?: { directoryUri?: string }): Promise<Track[]> {
+export async function scanLocalAudio(onProgress?: (progress: ScanProgress) => void, options?: { directoryUri?: string }): Promise<Track[]> {
   if (Platform.OS === "web") return [];
   const available = await MediaLibrary.isAvailableAsync();
   if (!available) return [];
@@ -190,7 +198,7 @@ export async function scanLocalAudio(onProgress?: (current: number, total?: numb
   const audioAssets = assets.filter((asset) => asset.mediaType === "audio");
   const external = await collectExternalMediaFiles(options?.directoryUri);
   let completed = 0;
-  onProgress?.(0, audioAssets.length);
+  onProgress?.({ phase: "preparing", current: 0, total: audioAssets.length });
   const imported: Track[] = [];
   for (let start = 0; start < audioAssets.length; start += 8) {
     const batch = audioAssets.slice(start, start + 8);
@@ -209,9 +217,7 @@ export async function scanLocalAudio(onProgress?: (current: number, total?: numb
     const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename) || external.artwork.get(baseName(asset.filename)) || external.defaultArtwork;
     const coverUri = await persistEmbeddedCover(picture, `local-${asset.id}`) || sidecar || fallbackArtwork;
     completed += 1;
-    onProgress?.(completed, audioAssets.length);
-
-    return {
+    const track = {
       id: `local-${asset.id}`,
       title,
       artist,
@@ -226,9 +232,12 @@ export async function scanLocalAudio(onProgress?: (current: number, total?: numb
       lyrics,
       createdAt: Date.now(),
     } satisfies Track;
+    onProgress?.({ phase: "scanning", current: completed, total: audioAssets.length, filename: asset.filename, path: sourceUri, track });
+    return track;
     }));
     imported.push(...batchTracks);
     await yieldToUI();
   }
+  onProgress?.({ phase: "completed", current: imported.length, total: audioAssets.length });
   return imported;
 }
