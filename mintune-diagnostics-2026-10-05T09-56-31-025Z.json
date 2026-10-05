@@ -1,0 +1,32 @@
+{
+  "app": "Mintune",
+  "exportedAt": "2026-10-05T09:56:31.025Z",
+  "entries": [
+    {
+      "at": "2026-10-05T09:55:57.881Z",
+      "type": "event",
+      "message": "app_start",
+      "context": {
+        "platform": "android"
+      }
+    },
+    {
+      "at": "2026-10-05T09:56:06.051Z",
+      "type": "event",
+      "message": "play_track",
+      "context": {
+        "trackId": "local-62958",
+        "title": "我不曾忘记",
+        "source": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac"
+      }
+    },
+    {
+      "at": "2026-10-05T09:56:24.947Z",
+      "type": "event",
+      "message": "app_start",
+      "context": {
+        "platform": "android"
+      }
+    }
+  ]
+}
