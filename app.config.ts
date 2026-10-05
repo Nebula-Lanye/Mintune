@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "0.4.455",
+  version: "0.4.505",
   orientation: "portrait",
   icon: "./assets/images/mintune-icon.png",
   scheme: env.scheme,
@@ -64,7 +64,7 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 455,
+    versionCode: 4505,
     adaptiveIcon: {
       backgroundColor: "#0d1b2e",
       foregroundImage: "./assets/images/mintune-icon.png",
