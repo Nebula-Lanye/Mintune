@@ -1,4 +1,10 @@
 # Mintune 薄荷音乐更新日志
+## 0.4.355 — 启动稳定性与品牌资源修复
+- 修复启动闪退：将 `expo-document-picker`、`expo-sharing` 从 Expo SDK 57 版本降至与 Expo SDK 54 匹配的 `14.0.8`，避免 `AnyTypeCache` `NoClassDefFoundError`。
+- 统一桌面图标、自适应图标和启动页使用新版 Mintune 品牌资源。
+- 统一 Android 自适应图标、启动页和应用深色主题背景为 `#0d1b2e`。
+- Android 版本号升级为 `0.4.355`，`versionCode` 为 `355`。
+
 
 ## 0.4.305 — 原生均衡器版（版本号校准）
 

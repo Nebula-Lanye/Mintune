@@ -3,11 +3,11 @@ export type Track = {
   quality: "HI-RES" | "LOSSLESS" | "HIGH" | "MEDIUM" | "LOW"; coverUri: string; sourceUri: string; lyrics?: string; createdAt?: number;
 };
 
-export const COLORS = { background: "#0d1b2e", surface: "#12233c", surfaceAlt: "#162c47", mint: "#5eead4", text: "#f3f6f1", muted: "#a8b8cc", subtle: "#6f829c", divider: "#1e3552", hires: "#5eead4", lossless: "#38bdf8", high: "#6f829c", medium: "#fbbf24", low: "#fb7185", brandDeep: "#050D20" };
+export const COLORS = { background: "#0d1b2e", surface: "#12233c", surfaceAlt: "#162c47", mint: "#5eead4", text: "#f3f6f1", muted: "#a8b8cc", subtle: "#6f829c", divider: "#1e3552", hires: "#5eead4", lossless: "#38bdf8", high: "#6f829c", medium: "#fbbf24", low: "#fb7185", brandDeep: "#0d1b2e" };
 export const FILTERS = ["全部", "最近添加", "HI-RES", "收藏"];
 export const SORTS = ["标题", "最近添加", "艺人", "专辑"];
 export const APP_NAME = "Mintune";
-export const APP_VERSION = "0.4.305";
+export const APP_VERSION = "0.4.355";
 export const APP_TAGLINE = "softly in tune";
 export const REPO_URL = "https://github.com/Nebula-Lanye/Mintune";
 export const SUPPORTED_FORMATS = ["FLAC", "ALAC", "WAV", "MP3", "AAC", "M4A", "OPUS", "APE", "WV", "DSF", "DFF"];
