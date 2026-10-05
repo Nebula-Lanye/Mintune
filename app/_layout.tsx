@@ -10,10 +10,12 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import "@/lib/_core/nativewind-pressable";
+import { installGlobalDiagnostics } from "@/lib/diagnostics";
 
 export const unstable_settings = { anchor: "(tabs)" };
 
 export default function RootLayout() {
+  useEffect(() => { installGlobalDiagnostics(); }, []);
   useEffect(() => {
     if (Platform.OS !== "web") {
       const timer = setTimeout(() => SplashScreen.hideAsync().catch(() => undefined), 350);
