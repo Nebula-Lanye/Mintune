@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "0.4.705",
+  version: "0.4.755",
   orientation: "portrait",
   icon: "./assets/images/mintune-icon.png",
   scheme: env.scheme,
@@ -64,7 +64,7 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 4705,
+    versionCode: 4755,
     adaptiveIcon: {
       backgroundColor: "#0d1b2e",
       foregroundImage: "./assets/images/mintune-icon.png",
@@ -98,6 +98,14 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-sqlite",
     [
+      "react-native-queue-player",
+      {
+        carplay: false,
+        siri: false,
+        chromecast: false,
+      },
+    ],
+    [
       "expo-media-library",
       {
         photosPermission: "允许 Mintune 访问设备媒体，以便导入本地音乐。",
@@ -130,19 +138,6 @@ const config: ExpoConfig = {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
         },
-      },
-    ],
-    [
-      "react-native-audio-api",
-      {
-        androidPermissions: [
-          "android.permission.MODIFY_AUDIO_SETTINGS",
-          "android.permission.FOREGROUND_SERVICE",
-          "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        ],
-        androidForegroundService: true,
-        androidFSTypes: ["mediaPlayback"],
-        iosBackgroundMode: true,
       },
     ],
   ],

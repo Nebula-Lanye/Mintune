@@ -1,3 +1,12 @@
+## 0.4.755 — queue-player 原生播放与十段均衡器
+
+- 使用 `react-native-queue-player` + `react-native-nitro-modules` 替换旧的 `react-native-audio-api` 播放链路。
+- 原生播放器统一管理播放、暂停、进度、拖动、后台播放、通知栏/锁屏媒体控制和歌曲切换，避免 JS 播放器重叠。
+- 系统媒体会话直接接收歌曲标题、歌手、专辑、时长和本地封面元数据。
+- 接入原生十段 EQ（31 Hz–16 kHz），支持启用开关、±12 dB、0.5 dB 步进、预设、重置和本地持久化。
+- Android CI 在 EAS 本地构建前执行 Expo prebuild，确保 Nitro 原生模块和媒体服务被正确合并。
+- 测试版 Android `versionCode` 为 `4755`。
+
 # Mintune 薄荷音乐更新日志
 ## 0.4.705 — 播放封面与应用图标修复
 - 修复 Android 自适应图标缺少 `android-icon-foreground.png` 导致应用图标不显示的问题。

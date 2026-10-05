@@ -66,6 +66,9 @@ jobs:
           }
           EOF
 
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --no-install
+
       - name: Build APK locally
         run: eas build --local --platform android --profile preview --non-interactive --output "$GITHUB_WORKSPACE/artifacts/mintune.apk"
 
