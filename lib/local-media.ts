@@ -33,6 +33,12 @@ function lyricsText(value: unknown) {
   return value.map((item) => typeof item === "string" ? item : item && typeof item === "object" && "text" in item ? String(item.text) : "").filter(Boolean).join("\n") || undefined;
 }
 
+function tagText(value: unknown) {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.find((item) => typeof item === "string") as string | undefined;
+  return undefined;
+}
+
 function bytesToDataUri(bytes: Uint8Array, format: string) {
   let binary = "";
   const chunkSize = 0x8000;
@@ -55,8 +61,8 @@ async function readWideMetadata(uri: string, filename: string): Promise<Embedded
     const picture = metadata.common.picture?.[0];
     return {
       title: metadata.common.title,
-      artist: metadata.common.artist,
-      album: metadata.common.album,
+      artist: tagText(metadata.common.artist) || tagText(metadata.common.artists),
+      album: tagText(metadata.common.album),
       genre: metadata.common.genre?.[0],
       lyrics: lyricsText(metadata.common.lyrics),
       bitrate: metadata.format.bitrate,

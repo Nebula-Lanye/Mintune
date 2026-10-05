@@ -1,5 +1,18 @@
 import { AudioContext, AudioNode, BiquadFilterNode } from "react-native-audio-api";
 
+type NativeAudioFileSourceNode = AudioNode & {
+  attach: (options: { loop: boolean; onEnded: () => void }) => { duration: number };
+  play: () => void;
+  pause: () => void;
+  seekToTime: (seconds: number) => void;
+  setPlaybackRate: (rate: number) => void;
+  dispose: () => void;
+};
+
+const { AudioFileSourceNode } = require("react-native-audio-api/lib/commonjs/Audio/AudioFileSourceNode") as {
+  AudioFileSourceNode: new (context: AudioContext, node: unknown) => NativeAudioFileSourceNode;
+};
+
 type NativeFileSource = {
   start: (when?: number) => void;
   pause: () => void;
@@ -26,7 +39,7 @@ const FREQUENCIES = [60, 230, 910, 3600, 14000];
 export class EqAudioPlayer {
   private readonly context: AudioContext;
   private readonly raw: NativeFileSource;
-  private readonly source: AudioNode;
+  private readonly source: NativeAudioFileSourceNode;
   private readonly filters: BiquadFilterNode[];
   private readonly timer: ReturnType<typeof setInterval>;
   private disposed = false;
@@ -38,7 +51,8 @@ export class EqAudioPlayer {
   constructor(options: Options) {
     this.context = new AudioContext();
     const raw = this.context.context.createFileSource({
-      source: options.uri,
+      // Audio API expects a filesystem path, not Expo's file:// URI.
+      source: options.uri.replace(/^file:\/\//, ""),
       playbackRate: options.playbackRate,
       preservesPitch: true,
       loop: false,
@@ -50,9 +64,17 @@ export class EqAudioPlayer {
     }
 
     this.raw = raw as NativeFileSource;
-    this.source = new AudioNode(this.context, raw as never);
+    this.source = new AudioFileSourceNode(this.context, raw);
     this.onTime = options.onTime;
     this.onEnded = options.onEnded;
+    this.source.attach({
+      loop: false,
+      onEnded: () => {
+        if (this.disposed) return;
+        this.playing = false;
+        this.onEnded();
+      },
+    });
 
     this.filters = FREQUENCIES.map((frequency, index) => {
       const filter = this.context.createBiquadFilter();
@@ -85,24 +107,25 @@ export class EqAudioPlayer {
     if (this.disposed) return;
     if (this.context.state === "suspended") await this.context.resume();
     if (this.disposed) return;
-    // The source is already connected through the EQ chain in the constructor.
-    this.raw.start(this.context.currentTime);
+    // The package wrapper intentionally bypasses the one-shot start guard,
+    // allowing a paused file source to resume from its current position.
+    this.source.play();
     this.started = true;
     this.playing = true;
   }
 
   pause() {
     if (this.disposed || !this.started) return;
-    this.raw.pause();
+    this.source.pause();
     this.playing = false;
   }
 
   seekTo(seconds: number) {
-    if (!this.disposed) this.raw.seekToTime(Math.max(0, seconds));
+    if (!this.disposed) this.source.seekToTime(Math.max(0, seconds));
   }
 
   setPlaybackRate(rate: number) {
-    if (!this.disposed) this.raw.playbackRate = rate;
+    if (!this.disposed) this.source.setPlaybackRate(rate);
   }
 
   setEqualizer(levels: number[]) {
@@ -118,9 +141,9 @@ export class EqAudioPlayer {
     this.playing = false;
     clearInterval(this.timer);
     try {
-      this.raw.pause();
+      this.source.pause();
+      this.source.dispose();
       this.source.disconnect();
-      this.raw.remove?.();
     } catch {
       // Best effort during app shutdown.
     }
