@@ -12,10 +12,10 @@
     "windows": [
       {
         "title": "Mintune 薄荷音乐",
-        "width": 1100,
-        "height": 760,
-        "minWidth": 860,
-        "minHeight": 600,
+        "width": 1280,
+        "height": 820,
+        "minWidth": 720,
+        "minHeight": 520,
         "resizable": true,
         "fullscreen": false
       }
