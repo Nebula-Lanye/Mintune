@@ -113,10 +113,10 @@ Artifact 默认保留 14 天。
 版本配置位于 `app.config.ts`：
 
 ```ts
-version: "0.4.105",
+version: "0.4.305",
 
 android: {
-  versionCode: 105,
+  versionCode: 305,
 }
 ```
 
