@@ -113,16 +113,16 @@ Artifact 默认保留 14 天。
 版本配置位于 `app.config.ts`：
 
 ```ts
-version: "0.4.305",
+version: "0.4.505",
 
 android: {
-  versionCode: 305,
+  versionCode: 4505,
 }
 ```
 
-- `version` 是用户看到的版本号，可以使用 `0.4.106`、`0.5.0` 等形式。
-- `android.versionCode` 是 Android 内部版本号，每次构建发布都必须递增。
-- 不要降低或重复使用 `versionCode`。
+- `version` 是用户看到的版本号，例如 `0.4.505`、`0.5.505` 或 `1.4.205`。
+- `android.versionCode` 按完整版本号去掉点号后计算：`0.4.505 → 4505`、`0.5.505 → 5505`、`1.4.205 → 14205`。
+- 每次构建发布都必须递增，不能降低或重复使用 `versionCode`。
 - 不要修改 Android 签名相关 Secrets。
 
 修改代码和版本号后提交到 `main`，再手动运行 **Build Android APK** 工作流即可。
