@@ -16,19 +16,19 @@ Mintune 是一款以本地音乐为核心的移动端音乐播放器，使用 Ex
 
 ## 技术栈
 
-| 类别 | 技术 |
-| --- | --- |
-| 移动框架 | Expo SDK 54 / React Native 0.81 |
-| 开发语言 | TypeScript |
-| 路由 | Expo Router 6 |
-| UI 样式 | NativeWind 4 + StyleSheet |
-| 音频播放 | expo-audio |
-| 本地数据库 | expo-sqlite |
-| 本地媒体扫描 | expo-media-library |
+| 类别         | 技术                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| 移动框架     | Expo SDK 54 / React Native 0.81                                                            |
+| 开发语言     | TypeScript                                                                                 |
+| 路由         | Expo Router 6                                                                              |
+| UI 样式      | NativeWind 4 + StyleSheet                                                                  |
+| 音频播放     | expo-audio                                                                                 |
+| 本地数据库   | expo-sqlite                                                                                |
+| 本地媒体扫描 | expo-media-library                                                                         |
 | 音频标签解析 | expo-music-info-2 + music-metadata（MP3 ID3、FLAC Vorbis、ALAC/M4A MPEG-4 标签与内嵌封面） |
-| 状态管理 | React Context + Hooks |
-| 测试 | Vitest |
-| Android 构建 | EAS Local Build + GitHub Actions |
+| 状态管理     | React Context + Hooks                                                                      |
+| 测试         | Vitest                                                                                     |
+| Android 构建 | EAS Local Build + GitHub Actions                                                           |
 
 ## 环境要求
 
@@ -94,17 +94,40 @@ pnpm lint
 
 Artifact 默认保留 14 天。
 
+## Windows / Linux 桌面版构建
+
+桌面版使用 Tauri 2 将 Expo Web 导出封装为原生桌面应用。配置位于 `src-tauri/`，工作流位于 `.github/workflows/desktop.yml`。
+
+- Windows runner 生成 NSIS 安装包：`.exe`
+- Ubuntu runner 生成 Debian 安装包：`.deb`
+- 桌面端版本与 `package.json`、`app.config.ts`、`lib/mintune-data.ts` 和 `src-tauri/` 中的版本必须一致。
+- 可在 GitHub Actions 中手动运行 **Build Desktop Apps**，也可以推送 `desktop-v*` 标签触发构建。
+
+本地预览 Web 界面：
+
+```bash
+pnpm exec expo export --platform web
+```
+
+本地完整 Tauri 构建需要 Rust、Linux WebKitGTK 开发库（Linux）或 Windows 桌面构建环境。GitHub Actions 会在对应 runner 上自动安装构建依赖。桌面端当前复用 Web 播放和界面逻辑；Android MediaStore 扫描、系统通知栏媒体控制和移动端原生均衡器仍需要单独的桌面适配。
+
+版本一致性检查：
+
+```bash
+pnpm check:versions
+```
+
 ### GitHub Actions Secrets
 
 工作流需要以下 Repository secrets：
 
-| Secret | 用途 |
-| --- | --- |
-| `EXPO_TOKEN` | Expo / EAS 构建授权 |
-| `KEYSTORE_BASE64` | Android 签名文件的 Base64 内容 |
-| `KEYSTORE_PASSWORD` | Keystore 密码 |
-| `KEY_ALIAS` | Android 签名别名 |
-| `KEY_PASSWORD` | 签名别名密码 |
+| Secret              | 用途                           |
+| ------------------- | ------------------------------ |
+| `EXPO_TOKEN`        | Expo / EAS 构建授权            |
+| `KEYSTORE_BASE64`   | Android 签名文件的 Base64 内容 |
+| `KEYSTORE_PASSWORD` | Keystore 密码                  |
+| `KEY_ALIAS`         | Android 签名别名               |
+| `KEY_PASSWORD`      | 签名别名密码                   |
 
 签名文件和密码必须妥善保存。发布更新时，不能更换原有签名文件，否则 Android 无法将新 APK 识别为同一个应用的可覆盖更新。
 
@@ -129,13 +152,13 @@ android: {
 
 ## 品牌资源
 
-| 用途 | 文件 |
-| --- | --- |
-| 桌面图标 | `assets/images/icon.png` |
-| Android 图形图标 | `assets/images/mintune-icon.png` |
-| 启动页方形安全区 Logo | `assets/images/splash-icon.png` |
-| 设置页完整 Logo | `assets/images/mintune-logo.png` |
-| Logo 生成脚本 | `scripts/prepare-brand-assets.py` |
+| 用途                  | 文件                              |
+| --------------------- | --------------------------------- |
+| 桌面图标              | `assets/images/icon.png`          |
+| Android 图形图标      | `assets/images/mintune-icon.png`  |
+| 启动页方形安全区 Logo | `assets/images/splash-icon.png`   |
+| 设置页完整 Logo       | `assets/images/mintune-logo.png`  |
+| Logo 生成脚本         | `scripts/prepare-brand-assets.py` |
 
 如果需要重新裁切品牌资源，修改脚本后执行：
 
