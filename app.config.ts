@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "0.4.705",
+  version: "0.4.805",
   orientation: "portrait",
   icon: "./assets/images/mintune-icon.png",
   scheme: env.scheme,
@@ -58,13 +58,13 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["audio"]
-      }
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      UIBackgroundModes: ["audio"],
+    },
   },
   android: {
-    versionCode: 4705,
+    versionCode: 4805,
     adaptiveIcon: {
       backgroundColor: "#0d1b2e",
       foregroundImage: "./assets/images/mintune-icon.png",
@@ -74,7 +74,11 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
-    permissions: ["POST_NOTIFICATIONS", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE"],
+    permissions: [
+      "POST_NOTIFICATIONS",
+      "READ_MEDIA_AUDIO",
+      "READ_EXTERNAL_STORAGE",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -98,6 +102,14 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-sqlite",
     [
+      "react-native-queue-player",
+      {
+        carplay: false,
+        siri: false,
+        chromecast: false,
+      },
+    ],
+    [
       "expo-media-library",
       {
         photosPermission: "允许 Mintune 访问设备媒体，以便导入本地音乐。",
@@ -108,7 +120,8 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
+        microphonePermission:
+          "Allow $(PRODUCT_NAME) to access your microphone.",
       },
     ],
     [
@@ -130,19 +143,6 @@ const config: ExpoConfig = {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
         },
-      },
-    ],
-    [
-      "react-native-audio-api",
-      {
-        androidPermissions: [
-          "android.permission.MODIFY_AUDIO_SETTINGS",
-          "android.permission.FOREGROUND_SERVICE",
-          "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        ],
-        androidForegroundService: true,
-        androidFSTypes: ["mediaPlayback"],
-        iosBackgroundMode: true,
       },
     ],
   ],

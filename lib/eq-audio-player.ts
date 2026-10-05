@@ -1,178 +1,127 @@
-import { AudioContext, AudioNode, BiquadFilterNode } from "react-native-audio-api";
+import { getTrackPlayer } from "react-native-queue-player";
+import { Equalizer } from "@/lib/queue-equalizer";
 import { logError, logEvent } from "@/lib/diagnostics";
-
-type NativeAudioFileSourceNode = AudioNode & {
-  attach: (options: { loop: boolean; onEnded: () => void }) => { duration: number };
-  play: () => void;
-  pause: () => void;
-  seekToTime: (seconds: number) => void;
-  setPlaybackRate: (rate: number) => void;
-  dispose: () => void;
-};
-
-const { AudioFileSourceNode } = require("react-native-audio-api/lib/commonjs/Audio/AudioFileSourceNode") as {
-  AudioFileSourceNode: new (context: AudioContext, node: unknown) => NativeAudioFileSourceNode;
-};
-
-type NativeFileSource = {
-  start: (when?: number) => void;
-  pause: () => void;
-  seekToTime: (seconds: number) => void;
-  disconnect?: () => void;
-  remove?: () => void;
-  currentTime: number;
-  duration: number;
-  playbackRate: number;
-  routedThroughMediaElement?: boolean;
-};
 
 type Options = {
   uri: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  artworkUri?: string;
+  duration?: number;
   levels: number[];
   playbackRate: number;
   onTime: (current: number, duration: number, playing: boolean) => void;
   onEnded: () => void;
 };
 
-const FREQUENCIES = [60, 230, 910, 3600, 14000];
+type NativePlayer = ReturnType<typeof getTrackPlayer>;
+let nativePlayer: NativePlayer | null = null;
+function player() { return nativePlayer ??= getTrackPlayer(); }
+let configurePromise: Promise<void> | null = null;
+let generation = 0;
 
-/** A single native Web-Audio graph with a five-band EQ and restartable file source. */
+function configure() {
+  if (!configurePromise) {
+    configurePromise = player().configure({
+      audioContentType: "music",
+      skipToPreviousBehavior: "restart-or-previous",
+      progressUpdateIntervalMs: 500,
+    });
+  }
+  return configurePromise;
+}
+
+/** Adapter retaining Mintune's existing player contract while delegating all native playback to queue-player. */
 export class EqAudioPlayer {
-  private readonly context: AudioContext;
-  private readonly raw: NativeFileSource;
-  private readonly source: NativeAudioFileSourceNode;
-  private readonly filters: BiquadFilterNode[];
-  private readonly timer: ReturnType<typeof setInterval>;
+  private readonly token = ++generation;
   private disposed = false;
   private playing = false;
-  private started = false;
-  private lastLoggedSecond = -1;
+  private current = 0;
+  private total = 0;
+  private readonly ready: Promise<void>;
+  private readonly disposers: Array<() => void> = [];
   private readonly onTime: Options["onTime"];
   private readonly onEnded: Options["onEnded"];
 
   constructor(options: Options) {
-    logEvent("native_player_constructor", { uri: options.uri, levels: options.levels, playbackRate: options.playbackRate });
-    this.context = new AudioContext();
-    const raw = this.context.context.createFileSource({
-      // Audio API expects a filesystem path, not Expo's file:// URI.
-      source: options.uri.replace(/^file:\/\//, ""),
-      playbackRate: options.playbackRate,
-      preservesPitch: true,
-      loop: false,
-      volume: 1,
-    });
-    if (!raw) {
-      void this.context.close();
-      throw new Error("当前原生音频模块不支持此音频格式。");
-    }
-
-    this.raw = raw as NativeFileSource;
-    this.source = new AudioFileSourceNode(this.context, raw);
     this.onTime = options.onTime;
     this.onEnded = options.onEnded;
-    this.source.attach({
-      loop: false,
-      onEnded: () => {
-        if (this.disposed) return;
-        logEvent("native_player_ended", { uri: options.uri, currentTime: this.raw.currentTime, duration: this.raw.duration });
+    void Equalizer.init();
+    logEvent("queue_player_constructor", { uri: options.uri, title: options.title, duration: options.duration });
+    this.disposers.push(
+      player().onProgress((progress) => {
+        if (this.disposed || this.token !== generation) return;
+        this.current = progress.position;
+        this.total = progress.duration || options.duration || 0;
+        this.onTime(this.current, this.total, this.playing);
+      }),
+      player().onStateChange((state) => {
+        if (this.disposed || this.token !== generation) return;
+        this.playing = state === "playing";
+        this.onTime(this.current, this.total, this.playing);
+      }),
+      player().onQueueEnd(() => {
+        if (this.disposed || this.token !== generation) return;
         this.playing = false;
+        logEvent("queue_player_ended", { uri: options.uri, currentTime: this.current, duration: this.total });
         this.onEnded();
-      },
-    });
-
-    this.filters = FREQUENCIES.map((frequency, index) => {
-      const filter = this.context.createBiquadFilter();
-      filter.type = "peaking";
-      filter.frequency.value = frequency;
-      filter.Q.value = 1;
-      filter.gain.value = options.levels[index] ?? 0;
-      return filter;
-    });
-
-    let node: AudioNode = this.source;
-    this.filters.forEach((filter) => {
-      node = node.connect(filter);
-    });
-    node.connect(this.context.destination);
-    logEvent("native_player_graph_ready", { uri: options.uri, duration: this.raw.duration, contextState: this.context.state });
-
-    this.timer = setInterval(() => {
-      if (this.disposed) return;
-      const duration = this.raw.duration || 0;
-      const current = this.raw.currentTime;
-      this.onTime(current, duration, this.playing);
-      const second = Math.floor(current);
-      if (this.playing && second >= 0 && second % 5 === 0 && second !== this.lastLoggedSecond) {
-        this.lastLoggedSecond = second;
-        logEvent("native_player_heartbeat", { currentTime: current, duration, playing: this.playing, contextState: this.context.state });
-      }
-      if (this.playing && duration > 0 && current >= duration - 0.15) {
-        this.playing = false;
-        this.onEnded();
-      }
-    }, 150);
+      }),
+      player().onError((error) => {
+        if (this.disposed || this.token !== generation) return;
+        logError(error, { source: "queue_player_native_error", uri: options.uri, title: options.title });
+      }),
+    );
+    this.ready = configure()
+      .then(() => player().setQueue([{
+        id: options.uri,
+        url: options.uri,
+        title: options.title,
+        artist: options.artist,
+        album: options.album,
+        duration: options.duration,
+        artworkUrl: options.artworkUri,
+      }], 0))
+      .then(() => { logEvent("queue_player_ready", { uri: options.uri, title: options.title }); })
+      .catch((error) => { logError(error, { source: "queue_player_set_queue", uri: options.uri, title: options.title }); throw error; });
   }
 
   async play() {
     if (this.disposed) return;
-    logEvent("native_player_play", { currentTime: this.raw.currentTime, duration: this.raw.duration, contextState: this.context.state, started: this.started });
-    if (this.context.state === "suspended") await this.context.resume();
+    await this.ready;
     if (this.disposed) return;
-    // The package wrapper intentionally bypasses the one-shot start guard,
-    // allowing a paused file source to resume from its current position.
-    this.source.play();
-    this.started = true;
+    logEvent("queue_player_play", { currentTime: this.current, duration: this.total });
+    await player().play();
     this.playing = true;
   }
 
   pause() {
-    if (this.disposed || !this.started) return;
-    logEvent("native_player_pause", { currentTime: this.raw.currentTime, duration: this.raw.duration });
-    this.source.pause();
-    this.playing = false;
+    if (this.disposed) return;
+    void player().pause().then(() => { this.playing = false; }).catch((error) => logError(error, { source: "queue_player_pause" }));
   }
 
   seekTo(seconds: number) {
-    if (!this.disposed) { logEvent("native_player_seek", { from: this.raw.currentTime, to: seconds, duration: this.raw.duration }); this.source.seekToTime(Math.max(0, seconds)); }
+    if (!this.disposed) void player().seekTo(Math.max(0, seconds)).catch((error) => logError(error, { source: "queue_player_seek", seconds }));
   }
 
   setPlaybackRate(rate: number) {
-    if (!this.disposed) this.source.setPlaybackRate(rate);
+    if (!this.disposed) void player().setPlaybackSpeed(rate).catch((error) => logError(error, { source: "queue_player_speed", rate }));
   }
 
-  setEqualizer(levels: number[]) {
-    if (this.disposed) return;
-    this.filters.forEach((filter, index) => {
-      filter.gain.value = Math.max(-4, Math.min(4, levels[index] ?? 0));
-    });
+  async setEqualizer(levels: number[]) {
+    if (!this.disposed) await Equalizer.setAllBandGains(levels);
   }
 
   remove() {
     if (this.disposed) return;
-    logEvent("native_player_remove", { currentTime: this.raw.currentTime, duration: this.raw.duration, playing: this.playing });
     this.disposed = true;
-    this.playing = false;
-    clearInterval(this.timer);
-    try {
-      this.source.pause();
-      this.source.dispose();
-      this.source.disconnect();
-    } catch (error) {
-      logError(error, { source: "native_player_remove" });
-      // Best effort during app shutdown.
-    }
-    void this.context.close();
+    if (this.token === generation) generation += 1;
+    this.disposers.splice(0).forEach((dispose) => dispose());
   }
 
-  get currentTime() {
-    return this.raw.currentTime;
-  }
-
-  get duration() {
-    return this.raw.duration;
-  }
-
-  get isPlaying() {
-    return this.playing;
-  }
+  get currentTime() { return this.current; }
+  get duration() { return this.total; }
+  get isPlaying() { return this.playing; }
 }
+
+export { player as getNativePlayer };

@@ -15,13 +15,42 @@ import { installGlobalDiagnostics } from "@/lib/diagnostics";
 export const unstable_settings = { anchor: "(tabs)" };
 
 export default function RootLayout() {
-  useEffect(() => { installGlobalDiagnostics(); }, []);
+  useEffect(() => {
+    installGlobalDiagnostics();
+  }, []);
   useEffect(() => {
     if (Platform.OS !== "web") {
-      const timer = setTimeout(() => SplashScreen.hideAsync().catch(() => undefined), 350);
+      const timer = setTimeout(
+        () => SplashScreen.hideAsync().catch(() => undefined),
+        350,
+      );
       return () => clearTimeout(timer);
     }
   }, []);
 
-  return <ThemeProvider><SafeAreaProvider><GestureHandlerRootView style={{ flex: 1 }}><PlayerProvider><Stack screenOptions={{ headerShown: false, animation: "fade" }}><Stack.Screen name="(tabs)" /><Stack.Screen name="player" options={{ presentation: "modal" }} /><Stack.Screen name="lyrics" options={{ presentation: "modal" }} /><Stack.Screen name="equalizer" options={{ presentation: "modal" }} /></Stack></PlayerProvider><StatusBar style="light" /></GestureHandlerRootView></SafeAreaProvider></ThemeProvider>;
+  return (
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <PlayerProvider>
+            <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="player" options={{ presentation: "modal" }} />
+              <Stack.Screen name="lyrics" options={{ presentation: "modal" }} />
+              <Stack.Screen
+                name="equalizer"
+                options={{ presentation: "modal" }}
+              />
+              <Stack.Screen name="about" options={{ presentation: "modal" }} />
+              <Stack.Screen
+                name="storage"
+                options={{ presentation: "modal" }}
+              />
+            </Stack>
+          </PlayerProvider>
+          <StatusBar style="light" />
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    </ThemeProvider>
+  );
 }
