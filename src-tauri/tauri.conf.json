@@ -6,8 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:8081",
-    "beforeDevCommand": "pnpm dev:metro",
-    "beforeBuildCommand": "pnpm exec expo export --platform web"
+    "beforeDevCommand": "pnpm dev:metro"
   },
   "app": {
     "windows": [

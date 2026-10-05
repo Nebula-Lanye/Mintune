@@ -71,6 +71,11 @@ jobs:
       - name: Run tests
         run: pnpm exec vitest run
 
+      - name: Export Expo Web assets
+        run: |
+          node -e "require('node:fs').rmSync('node_modules/react-native-css-interop/.cache', { recursive: true, force: true })"
+          pnpm exec expo export --platform web
+
       - name: Build Tauri bundle
         uses: tauri-apps/tauri-action@v1
         env:

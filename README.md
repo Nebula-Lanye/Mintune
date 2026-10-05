@@ -109,6 +109,8 @@ Artifact 默认保留 14 天。
 pnpm exec expo export --platform web
 ```
 
+GitHub Actions 会先单独执行一次上述静态导出，再运行 Tauri 打包。这样可以避免 Tauri 构建钩子与 Metro/NativeWind 缓存并发写入；如果本地完整构建，也请先完成 Web 导出，再执行 `pnpm exec tauri build`。
+
 本地完整 Tauri 构建需要 Rust、Linux WebKitGTK 开发库（Linux）或 Windows 桌面构建环境。GitHub Actions 会在对应 runner 上自动安装构建依赖。桌面端当前复用 Web 播放和界面逻辑；Android MediaStore 扫描、系统通知栏媒体控制和移动端原生均衡器仍需要单独的桌面适配。
 
 版本一致性检查：
