@@ -16,7 +16,7 @@ type PlayerContextValue = {
   toggleFavoriteTrack: (trackId?: string) => void; addToQueue: (track: Track) => void; removeFromQueue: (trackId: string) => void; moveInQueue: (from: number, to: number) => void; clearQueue: () => void;
   createPlaylist: (name: string) => StoredPlaylist; renamePlaylist: (id: string, name: string) => void; deletePlaylist: (id: string) => void;
   addTrackToPlaylist: (playlistId: string, trackId: string) => void; removeTrackFromPlaylist: (playlistId: string, trackId: string) => void; getPlaylistTracks: (playlistId: string) => Track[];
-  saveTrackMetadata: (track: Track) => void; refreshDatabase: () => void; scanLocalMusic: (onProgress?: (progress: ScanProgress) => void, directoryUri?: string) => Promise<number>; openPlayer: () => void;
+  saveTrackMetadata: (track: Track) => void; refreshDatabase: () => void; scanLocalMusic: (onProgress?: (progress: ScanProgress) => void) => Promise<number>; openPlayer: () => void;
 };
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
@@ -69,7 +69,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const removeFromQueue = useCallback((trackId: string) => setQueue((items) => items.filter((item) => item.id === currentTrack?.id || item.id !== trackId)), [currentTrack]);
   const moveInQueue = useCallback((from: number, to: number) => setQueue((items) => { if (from < 0 || to < 0 || from >= items.length || to >= items.length) return items; const next = [...items]; const [item] = next.splice(from, 1); if (item) next.splice(to, 0, item); return next; }), []);
   const clearQueue = useCallback(() => setQueue(currentTrack ? [currentTrack] : []), [currentTrack]);
-  const scanLocalMusic = useCallback(async (onProgress?: (progress: ScanProgress) => void, directoryUri?: string) => { let count = 0; const imported = await scanLocalAudio((progress) => { if (progress.track) { saveTrackMetadata(progress.track); count += 1; if (count % 4 === 0) refreshDatabase(); } onProgress?.(progress); }, { directoryUri }); imported.forEach(saveTrackMetadata); refreshDatabase(); return count || imported.length; }, [refreshDatabase]);
+  const scanLocalMusic = useCallback(async (onProgress?: (progress: ScanProgress) => void) => { const imported = await scanLocalAudio((progress) => { if (progress.track) saveTrackMetadata(progress.track); onProgress?.(progress); }); refreshDatabase(); return imported.length; }, [refreshDatabase, saveTrackMetadata]);
   const createPlaylist = useCallback((name: string) => { const playlist = createPlaylistRecord(name); refreshDatabase(); return playlist; }, [refreshDatabase]);
   const renamePlaylist = useCallback((id: string, name: string) => { renamePlaylistRecord(id, name); refreshDatabase(); }, [refreshDatabase]);
   const deletePlaylist = useCallback((id: string) => { deletePlaylistRecord(id); refreshDatabase(); }, [refreshDatabase]);

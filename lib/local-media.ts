@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { Directory, File } from "expo-file-system";
+import { File } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { MusicInfo } from "expo-music-info-2";
 import { parseBuffer } from "music-metadata";
@@ -11,7 +11,6 @@ import { isArtworkFilename, pictureDataUri, sidecarArtworkNames } from "@/lib/co
 import { qualityFromMetadata } from "@/lib/media-quality";
 
 const fallbackArtwork = "mintune-local";
-export type ScanProgress = { phase: "preparing" | "scanning" | "completed"; current: number; total: number; filename?: string; path?: string; track?: Track };
 export type EmbeddedMetadata = {
   title?: string | null;
   artist?: string | null;
@@ -135,27 +134,64 @@ async function persistEmbeddedCover(picture: string | undefined, trackId: string
   }
 }
 
-export async function scanLocalAudio(onProgress?: (progress: ScanProgress) => void, options?: { directoryUri?: string }): Promise<Track[]> {
+export type ScanProgress = { current: number; total: number; filename: string; track?: Track };
+
+export async function scanLocalAudio(onProgress?: (progress: ScanProgress) => void): Promise<Track[]> {
   if (Platform.OS === "web") return [];
   const available = await MediaLibrary.isAvailableAsync();
   if (!available) return [];
+
   const permission = await MediaLibrary.requestPermissionsAsync(false, ["audio"]);
   if (!permission.granted) throw new Error("未获得音乐文件访问权限，请在系统设置中允许 Mintune 访问音频。 ");
+
   const assets: MediaLibrary.Asset[] = [];
   let page = await MediaLibrary.getAssetsAsync({ first: 500, mediaType: MediaLibrary.MediaType.audio, sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
   assets.push(...page.assets);
-  while (page.hasNextPage) { page = await MediaLibrary.getAssetsAsync({ first: 500, after: page.endCursor, mediaType: MediaLibrary.MediaType.audio, sortBy: [[MediaLibrary.SortBy.creationTime, false]] }); assets.push(...page.assets); }
-  const audioAssets = assets.filter((asset) => asset.mediaType === "audio");
-  let completed = 0; const imported: Track[] = [];
-  onProgress?.({ phase: "preparing", current: 0, total: audioAssets.length });
-  for (let start = 0; start < audioAssets.length; start += 8) {
-    const batch = audioAssets.slice(start, start + 8);
-    const batchTracks = await Promise.all(batch.map(async (asset) => {
-      const fallback = filenameMetadata(asset.filename); const info = await MediaLibrary.getAssetInfoAsync(asset.id).catch(() => null); const sourceUri = info?.localUri ?? asset.uri; const metadata = await readEmbeddedMetadata(sourceUri, asset.filename); const lyrics = metadata?.lyrics?.trim() || await readSidecarLyrics(sourceUri); const durationSeconds = Math.max(1, Math.round(asset.duration || 0)); const title = metadata?.title?.trim() || fallback.title; const artist = metadata?.artist?.trim() || fallback.artist; const album = metadata?.album?.trim() || "设备音乐"; const genre = metadata?.genre?.trim() || "本地音频"; const picture = pictureDataUri(metadata?.picture); const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename); const coverUri = await persistEmbeddedCover(picture, `local-${asset.id}`) || sidecar || fallbackArtwork; completed += 1;
-      const track = { id: `local-${asset.id}`, title, artist, album, genre, year: asset.creationTime ? String(new Date(asset.creationTime).getFullYear()) : "未知", duration: `${String(Math.floor(durationSeconds / 60)).padStart(2, "0")}:${String(durationSeconds % 60).padStart(2, "0")}`, durationSeconds, quality: qualityFromMetadata(asset.filename, metadata), coverUri, sourceUri, lyrics, createdAt: Date.now() } satisfies Track;
-      onProgress?.({ phase: "scanning", current: completed, total: audioAssets.length, filename: asset.filename, path: sourceUri, track }); return track;
-    }));
-    imported.push(...batchTracks); await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  while (page.hasNextPage) {
+    page = await MediaLibrary.getAssetsAsync({ first: 500, after: page.endCursor, mediaType: MediaLibrary.MediaType.audio, sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
+    assets.push(...page.assets);
   }
-  onProgress?.({ phase: "completed", current: imported.length, total: audioAssets.length }); return imported;
+  const audioAssets = assets.filter((asset) => asset.mediaType === "audio");
+  let completed = 0;
+  onProgress?.({ current: 0, total: audioAssets.length, filename: "准备读取设备媒体库…" });
+  const imported: Track[] = [];
+  for (let start = 0; start < audioAssets.length; start += 6) {
+    const batch = audioAssets.slice(start, start + 6);
+    const tracks = await Promise.all(batch.map(async (asset) => {
+    const fallback = filenameMetadata(asset.filename);
+    const info = await MediaLibrary.getAssetInfoAsync(asset.id).catch(() => null);
+    const sourceUri = info?.localUri ?? asset.uri;
+    const metadata = await readEmbeddedMetadata(sourceUri, asset.filename);
+    const lyrics = metadata?.lyrics?.trim() || await readSidecarLyrics(sourceUri);
+    const durationSeconds = Math.max(1, Math.round(asset.duration || 0));
+    const title = metadata?.title?.trim() || fallback.title;
+    const artist = metadata?.artist?.trim() || fallback.artist;
+    const album = metadata?.album?.trim() || "设备音乐";
+    const genre = metadata?.genre?.trim() || "本地音频";
+    const picture = pictureDataUri(metadata?.picture);
+    const sidecar = picture ? undefined : await readSidecarArtwork(sourceUri, asset.filename);
+    const coverUri = await persistEmbeddedCover(picture, `local-${asset.id}`) || sidecar || fallbackArtwork;
+    completed += 1;
+    const track = {
+      id: `local-${asset.id}`,
+      title,
+      artist,
+      album,
+      genre,
+      year: asset.creationTime ? String(new Date(asset.creationTime).getFullYear()) : "未知",
+      duration: `${String(Math.floor(durationSeconds / 60)).padStart(2, "0")}:${String(durationSeconds % 60).padStart(2, "0")}`,
+      durationSeconds,
+      quality: qualityFromMetadata(asset.filename, metadata),
+      coverUri,
+      sourceUri,
+      lyrics,
+      createdAt: Date.now(),
+    } satisfies Track;
+    onProgress?.({ current: completed, total: audioAssets.length, filename: asset.filename, track });
+    return track;
+    }));
+    imported.push(...tracks);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return imported;
 }

@@ -1,6 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useEffect, useRef, useState, type ComponentProps } from "react";
-import { Animated, Easing, Image, Modal, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
+import { Alert, Animated, Easing, Image, Modal, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ImageStyle, type StyleProp } from "react-native";
+import { useRouter } from "expo-router";
 import { COLORS, Track, getQualityColor, getTrackMeta } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 import { getPlaybackAction } from "@/lib/player-logic";
@@ -28,6 +29,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
 }
 
 export function TrackRow({ track, index, compact = false, onPress, onLongPress }: { track: Track; index?: number; compact?: boolean; onPress?: (track: Track) => void; onLongPress?: () => void }) {
+  const router = useRouter();
   const player = usePlayer();
   const isActive = player.currentTrack?.id === track.id;
   const handlePress = () => {
@@ -44,7 +46,7 @@ export function TrackRow({ track, index, compact = false, onPress, onLongPress }
     </View>
     {!compact ? <QualityBadge quality={track.quality} /> : null}
     <Text style={styles.trackDuration}>{track.duration}</Text>
-    <Pressable accessibilityLabel={`打开 ${track.title} 操作`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
+    <Pressable accessibilityLabel={`打开 ${track.title} 操作`} onPress={(event: GestureResponderEvent) => { event.stopPropagation(); const playlistButtons = player.playlists.map((playlist) => ({ text: `添加到「${playlist.name}」`, onPress: () => player.addTrackToPlaylist(playlist.id, track.id) })); Alert.alert(track.title, "选择操作", [{ text: player.favorites.includes(track.id) ? "取消收藏" : "收藏", onPress: () => player.toggleFavoriteTrack(track.id) }, ...playlistButtons, { text: "打开播放器", onPress: () => { player.playTrack(track); router.push("/player" as never); } }, { text: "取消", style: "cancel" }]); }} style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}><Icon name="more-horiz" size={20} color={COLORS.muted} /></Pressable>
   </Pressable>;
 }
 
@@ -65,15 +67,15 @@ export function SearchBar({ value, onChangeText, placeholder = "搜索歌曲、�
 
 export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: string; title: string; subtitle?: string; right?: React.ReactNode }) {
   const value = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.timing(value, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [value]);
-  return <Animated.View style={[styles.pageHeader, { opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}><View style={styles.pageHeaderCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>{right}</Animated.View>;
+  useEffect(() => { Animated.timing(value, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [value]);
+  return <Animated.View style={[styles.pageHeader, { opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}><View style={styles.pageHeaderCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>{right}</Animated.View>;
 }
 
-export function AppDialog({ visible, title, message, onClose }: { visible: boolean; title: string; message: string; onClose: () => void }) {
-  const scale = useRef(new Animated.Value(0.92)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => { if (visible) { scale.setValue(0.92); opacity.setValue(0); Animated.parallel([Animated.spring(scale, { toValue: 1, damping: 18, stiffness: 220, mass: 0.7, useNativeDriver: true }), Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true })]).start(); } }, [visible, opacity, scale]);
-  return <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}><View style={styles.dialogBackdrop}><Animated.View style={[styles.glassDialog, { opacity, transform: [{ scale }] }]}><View style={styles.glassHighlight} /><Text style={styles.dialogTitle}>{title}</Text><Text style={styles.dialogMessage}>{message}</Text><Pressable onPress={onClose} style={({ pressed }) => [styles.dialogButton, pressed && styles.pressed]}><Text style={styles.dialogButtonText}>好的</Text></Pressable></Animated.View></View></Modal>;
+export function ScanProgressModal({ visible, current, total, filename, recent, onClose }: { visible: boolean; current: number; total: number; filename: string; recent: string[]; onClose: () => void }) {
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => { if (!visible) return; spin.setValue(0); const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true })); loop.start(); return () => loop.stop(); }, [spin, visible]);
+  const progress = total ? Math.min(1, current / total) : 0;
+  return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}><View style={styles.scanBackdrop}><View style={styles.scanCard}><View style={styles.scanHeading}><Animated.View style={{ transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) }] }}><Icon name="sync" size={27} color={COLORS.mint} /></Animated.View><View style={styles.scanHeadingCopy}><Text style={styles.scanTitle}>扫描音乐</Text><Text style={styles.scanSubtitle}>{current >= total && total > 0 ? "扫描完成" : "正在读取设备媒体库"}</Text></View></View><View style={styles.scanTrack}><Animated.View style={[styles.scanFill, { width: `${progress * 100}%` }]} /></View><View style={styles.scanStats}><Text style={styles.scanCount}>{current} / {total || "…"} 首歌曲</Text><Text style={styles.scanPercent}>{Math.round(progress * 100)}%</Text></View><Text numberOfLines={1} style={styles.scanPath}>{filename || "准备扫描…"}</Text><Text style={styles.scanRecentTitle}>最近发现</Text><View style={styles.scanRecent}>{recent.length ? recent.slice(-6).reverse().map((item, index) => <Text key={`${item}-${index}`} numberOfLines={1} style={styles.scanRecentItem}>{item}</Text>) : <Text style={styles.scanEmpty}>等待读取音频文件…</Text>}</View><Pressable onPress={onClose} disabled={current < total && total > 0} style={({ pressed }) => [styles.scanButton, current < total && total > 0 && styles.scanDisabled, pressed && styles.pressed]}><Text style={styles.scanButtonText}>{current >= total && total > 0 ? "完成" : "扫描中"}</Text></Pressable></View></View></Modal>;
 }
 
 export const styles = StyleSheet.create({
@@ -109,11 +111,23 @@ export const styles = StyleSheet.create({
   eyebrow: { color: COLORS.mint, fontSize: 11, fontWeight: "800", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" },
   pageTitle: { color: COLORS.text, fontSize: 31, lineHeight: 37, fontWeight: "800", letterSpacing: -0.8 },
   pageSubtitle: { color: COLORS.muted, fontSize: 13, lineHeight: 19, marginTop: 8 },
-  dialogBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "rgba(2,8,18,0.72)" },
-  glassDialog: { width: "100%", overflow: "hidden", borderRadius: 28, padding: 23, backgroundColor: "rgba(24,49,76,0.93)", borderWidth: 1, borderColor: "rgba(188,255,246,0.26)", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 18 },
-  glassHighlight: { position: "absolute", top: 0, left: 20, right: 20, height: 1, backgroundColor: "rgba(255,255,255,0.55)" },
-  dialogTitle: { color: COLORS.text, fontSize: 20, fontWeight: "800" },
-  dialogMessage: { color: COLORS.muted, fontSize: 13, lineHeight: 21, marginTop: 12 },
-  dialogButton: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 20, borderRadius: 16, backgroundColor: COLORS.mint },
-  dialogButtonText: { color: COLORS.background, fontSize: 14, fontWeight: "800" },
+  scanBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20, backgroundColor: "rgba(2,8,18,0.76)" },
+  scanCard: { width: "100%", borderRadius: 28, padding: 23, backgroundColor: "#18314C", borderWidth: 1, borderColor: "rgba(188,255,246,0.3)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 20 },
+  scanHeading: { flexDirection: "row", alignItems: "center" },
+  scanHeadingCopy: { marginLeft: 12 },
+  scanTitle: { color: COLORS.text, fontSize: 20, fontWeight: "800" },
+  scanSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
+  scanTrack: { height: 9, overflow: "hidden", marginTop: 22, borderRadius: 99, backgroundColor: "rgba(255,255,255,0.12)" },
+  scanFill: { height: "100%", borderRadius: 99, backgroundColor: COLORS.mint },
+  scanStats: { flexDirection: "row", justifyContent: "space-between", marginTop: 9 },
+  scanCount: { color: COLORS.text, fontSize: 12, fontWeight: "800" },
+  scanPercent: { color: COLORS.mint, fontSize: 12, fontWeight: "800" },
+  scanPath: { marginTop: 14, padding: 11, borderRadius: 12, color: COLORS.muted, fontSize: 11, backgroundColor: "rgba(0,0,0,0.2)" },
+  scanRecentTitle: { color: COLORS.mint, fontSize: 11, fontWeight: "800", marginTop: 18, marginBottom: 6 },
+  scanRecent: { minHeight: 90, padding: 11, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.14)" },
+  scanRecentItem: { color: COLORS.muted, fontSize: 11, lineHeight: 18 },
+  scanEmpty: { color: COLORS.subtle, fontSize: 11 },
+  scanButton: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 18, borderRadius: 16, backgroundColor: COLORS.mint },
+  scanDisabled: { opacity: 0.45 },
+  scanButtonText: { color: COLORS.background, fontSize: 14, fontWeight: "800" },
 });

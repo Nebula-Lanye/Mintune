@@ -4,7 +4,7 @@ import type { Track } from "@/lib/mintune-data";
 
 export type StoredPlaylist = { id: string; name: string; count: number; tone: string; icon: string; isDefault: boolean };
 export type PlayHistoryItem = { trackId: string; playedAt: number };
-export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favorites: string[]; history: PlayHistoryItem[] };
+export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favorites: string[]; history: PlayHistoryItem[]; playlistTracks?: Record<string, string[]> };
 
 let database: SQLiteDatabase | null = null;
 export const DATABASE_NAME = "mintune.db";
@@ -106,4 +106,21 @@ export function setFavorite(trackId: string, favorite: boolean) { initializeData
 export function recordPlay(trackId: string, playedAt = Date.now()) { initializeDatabase(); getDatabase().runSync("INSERT INTO play_history (track_id, played_at) VALUES (?,?)", trackId, playedAt); getDatabase().runSync("DELETE FROM play_history WHERE id NOT IN (SELECT id FROM play_history ORDER BY played_at DESC LIMIT 1000)"); }
 export function listPlayHistory(limit = 20) { initializeDatabase(); return getDatabase().getAllSync<{ track_id: string; played_at: number }>("SELECT track_id,played_at FROM play_history ORDER BY played_at DESC LIMIT ?", limit).map((item) => ({ trackId: item.track_id, playedAt: item.played_at })); }
 export function getWeeklyListeningSeconds() { initializeDatabase(); const since = Date.now() - 7 * 24 * 60 * 60 * 1000; return getDatabase().getFirstSync<{ total: number }>("SELECT COALESCE(SUM(t.duration_seconds),0) AS total FROM play_history h JOIN tracks t ON t.id=h.track_id WHERE h.played_at>=?", since)?.total ?? 0; }
-export function getDatabaseState(): DatabaseState { return { tracks: listTracks(), playlists: listPlaylists(), favorites: listFavoriteIds(), history: listPlayHistory() }; }
+export function getDatabaseState(): DatabaseState { const playlistTracks: Record<string, string[]> = {}; listPlaylists().forEach((playlist) => { playlistTracks[playlist.id] = getDatabase().getAllSync<{ track_id: string }>("SELECT track_id FROM playlist_tracks WHERE playlist_id=? ORDER BY position ASC", playlist.id).map((item) => item.track_id); }); return { tracks: listTracks(), playlists: listPlaylists(), favorites: listFavoriteIds(), history: listPlayHistory(), playlistTracks }; }
+
+export function exportDatabaseBackup() { return JSON.stringify({ app: "Mintune", version: 1, exportedAt: new Date().toISOString(), state: getDatabaseState() }, null, 2); }
+
+export function importDatabaseBackup(raw: string) {
+  const payload = JSON.parse(raw) as { app?: string; state?: DatabaseState };
+  if (payload.app !== "Mintune" || !payload.state) throw new Error("这不是有效的 Mintune 备份文件。");
+  const state = payload.state; const db = initializeDatabase();
+  db.withTransactionSync(() => {
+    db.execSync("DELETE FROM playlist_tracks; DELETE FROM favorites; DELETE FROM play_history; DELETE FROM playlists; DELETE FROM tracks;");
+    state.tracks.forEach((track) => upsertTrack(track));
+    state.playlists.forEach((playlist) => createPlaylistRecord(playlist.id, playlist.name, playlist.tone, playlist.icon, playlist.isDefault));
+    state.favorites.forEach((id) => setFavorite(id, true));
+    state.history.forEach((item) => recordPlay(item.trackId, item.playedAt));
+    Object.entries(state.playlistTracks ?? {}).forEach(([playlistId, ids]) => ids.forEach((trackId, position) => db.runSync("INSERT OR IGNORE INTO playlist_tracks (playlist_id,track_id,position) VALUES (?,?,?)", playlistId, trackId, position)));
+  });
+  return state.tracks.length;
+}

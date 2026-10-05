@@ -2,7 +2,7 @@ import type { Track } from "@/lib/mintune-data";
 
 export type StoredPlaylist = { id: string; name: string; count: number; tone: string; icon: string; isDefault: boolean };
 export type PlayHistoryItem = { trackId: string; playedAt: number };
-export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favorites: string[]; history: PlayHistoryItem[] };
+export type DatabaseState = { tracks: Track[]; playlists: StoredPlaylist[]; favorites: string[]; history: PlayHistoryItem[]; playlistTracks?: Record<string, string[]> };
 export const DATABASE_NAME = "mintune.db";
 export const DATABASE_VERSION = 4;
 const STORAGE_KEY = "mintune:web-database:v4";
@@ -31,4 +31,6 @@ export function setFavorite(trackId: string, favorite: boolean) { initializeData
 export function recordPlay(trackId: string, playedAt = Date.now()) { initializeDatabase(); state.history = [{ trackId, playedAt }, ...state.history.filter((item) => item.trackId !== trackId)].slice(0, 1000); persist(); }
 export function listPlayHistory(limit = 20) { initializeDatabase(); return state.history.slice(0, limit); }
 export function getWeeklyListeningSeconds() { initializeDatabase(); const since = Date.now() - 7 * 24 * 60 * 60 * 1000; return state.history.filter((item) => item.playedAt >= since).reduce((sum, item) => sum + (state.tracks.find((track) => track.id === item.trackId)?.durationSeconds ?? 0), 0); }
-export function getDatabaseState(): DatabaseState { return { tracks: listTracks(), playlists: listPlaylists(), favorites: listFavoriteIds(), history: listPlayHistory() }; }
+export function getDatabaseState(): DatabaseState { initializeDatabase(); return { tracks: listTracks(), playlists: listPlaylists(), favorites: listFavoriteIds(), history: listPlayHistory(), playlistTracks: state.playlistTracks }; }
+export function exportDatabaseBackup() { return JSON.stringify({ app: "Mintune", version: 1, exportedAt: new Date().toISOString(), state: getDatabaseState() }, null, 2); }
+export function importDatabaseBackup(raw: string) { const payload = JSON.parse(raw) as { app?: string; state?: DatabaseState }; if (payload.app !== "Mintune" || !payload.state) throw new Error("这不是有效的 Mintune 备份文件。"); initializeDatabase(); state = { tracks: payload.state.tracks, playlists: payload.state.playlists, favorites: payload.state.favorites, history: payload.state.history, playlistTracks: payload.state.playlistTracks ?? {} }; persist(); return state.tracks.length; }

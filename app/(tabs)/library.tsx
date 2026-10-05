@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { AppDialog, Icon, PageHeader, SearchBar, TrackRow, styles as ui } from "@/components/mintune-ui";
+import { Icon, PageHeader, ScanProgressModal, SearchBar, TrackRow, styles as ui } from "@/components/mintune-ui";
 import { COLORS, FILTERS, SORTS, getSearchResults, getSortedTracks } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 
@@ -12,17 +12,15 @@ export default function LibraryScreen() {
   const [sort, setSort] = useState(SORTS[0]);
   const [showSorts, setShowSorts] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
+  const [scanVisible, setScanVisible] = useState(false);
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, filename: "", recent: [] as string[] });
   const results = useMemo(() => getSortedTracks(getSearchResults(query, filter, player.favorites, player.tracks), sort), [filter, player.favorites, player.tracks, query, sort]);
   const scanMusic = async () => {
     if (scanning) return;
-    setScanning(true);
-    try {
-      const count = await player.scanLocalMusic();
-      setDialog({ title: "扫描完成", message: count ? `已导入 ${count} 首本地音乐。` : "没有找到可导入的音频文件。" });
-    } catch (error) {
-      setDialog({ title: "无法扫描音乐", message: error instanceof Error ? error.message : "请检查音乐访问权限后重试。" });
-    } finally { setScanning(false); }
+    setScanning(true); setScanVisible(true); setScanProgress({ current: 0, total: 0, filename: "准备扫描…", recent: [] });
+    try { const count = await player.scanLocalMusic((progress) => setScanProgress((state) => ({ current: progress.current, total: progress.total, filename: progress.filename, recent: progress.track ? [...state.recent, progress.track.title] : state.recent }))); setScanProgress((state) => ({ ...state, current: count, total: Math.max(count, state.total), filename: `扫描完成，共 ${count} 首歌曲` })); }
+    catch { setScanVisible(false); }
+    finally { setScanning(false); }
   };
 
   return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-background">
@@ -35,7 +33,7 @@ export default function LibraryScreen() {
       <View style={styles.resultHeader}><Text style={styles.resultTitle}>{query ? `搜索结果 · ${results.length} 首` : "全部歌曲"}</Text><Text style={styles.resultMeta}>按{sort}排序</Text></View>
       {results.length === 0 ? <View style={styles.empty}><Icon name="music-off" size={30} color={COLORS.muted} /><Text style={styles.emptyTitle}>没有找到匹配的音乐</Text><Text style={styles.emptyText}>试试搜索歌曲名或艺人</Text></View> : null}
     </>} ListFooterComponent={<View style={styles.footer}><Text style={styles.footerText}>{player.tracks.length ? "曲目来自你的设备，并保存在本地数据库。" : "点击右上角扫描设备中的音乐文件。"}</Text></View>} />
-    <AppDialog visible={Boolean(dialog)} title={dialog?.title ?? ""} message={dialog?.message ?? ""} onClose={() => setDialog(null)} />
+    <ScanProgressModal visible={scanVisible} current={scanProgress.current} total={scanProgress.total} filename={scanProgress.filename} recent={scanProgress.recent} onClose={() => setScanVisible(false)} />
   </ScreenContainer>;
 }
 

@@ -49,7 +49,7 @@ const config: ExpoConfig = {
       projectId: easProjectId,
     },
   },
-  version: "0.4.205",
+  version: "0.4.206",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -64,9 +64,9 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 205,
+    versionCode: 206,
     adaptiveIcon: {
-      backgroundColor: "#0d1b2e",
+      backgroundColor: "#050D20",
       foregroundImage: "./assets/images/mintune-icon.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/mintune-icon.png",
@@ -117,9 +117,9 @@ const config: ExpoConfig = {
         image: "./assets/images/splash-icon.png",
         imageWidth: 260,
         resizeMode: "contain",
-        backgroundColor: "#0d1b2e",
+        backgroundColor: "#050D20",
         dark: {
-          backgroundColor: "#0d1b2e",
+          backgroundColor: "#050D20",
         },
       },
     ],
