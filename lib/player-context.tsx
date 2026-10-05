@@ -7,6 +7,7 @@ import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlayl
 import { scanLocalAudio, type ScanProgress } from "@/lib/local-media";
 import { disposeAudioPlayer, type DisposableAudio } from "@/lib/player-logic";
 import { EqAudioPlayer } from "@/lib/eq-audio-player";
+import { PlaybackNotificationManager } from "react-native-audio-api";
 
 type RepeatMode = "off" | "all" | "one";
 type PlayerContextValue = {
@@ -40,13 +41,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     } catch { setTracks([]); setQueue([]); setPlaylists([]); setFavorites([]); setHistory([]); setCurrentTrack(null); setIsPlaying(false); setIsReady(true); }
   }, []);
 
-  useEffect(() => { const timer = setTimeout(() => { try { initializeDatabase(); } catch { /* native SQLite unavailable in web preview */ } refreshDatabase(); }, 0); if (Platform.OS !== "web") void setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "duckOthers" } as never).catch(() => undefined); return () => { clearTimeout(timer); playbackTokenRef.current += 1; disposeAudio(); }; }, [disposeAudio, refreshDatabase]);
+  useEffect(() => { const timer = setTimeout(() => { try { initializeDatabase(); } catch { /* native SQLite unavailable in web preview */ } refreshDatabase(); }, 0); if (Platform.OS !== "web") void setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "duckOthers", shouldRouteThroughEarpiece: false } as never).catch(() => undefined); return () => { clearTimeout(timer); playbackTokenRef.current += 1; disposeAudio(); void PlaybackNotificationManager.hide().catch(() => undefined); }; }, [disposeAudio, refreshDatabase]);
   useEffect(() => { if (sleepRemaining == null) return; const timer = setInterval(() => setSleepRemaining((value) => { if (value == null || value <= 1) { setIsPlaying(false); (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.(); return null; } return value - 1; }), 60000); return () => clearInterval(timer); }, [sleepRemaining]);
 
   const playTrack = useCallback((track: Track, requestedQueue?: Track[]) => {
-    const token = playbackTokenRef.current + 1; playbackTokenRef.current = token; disposeAudio(); setCurrentTrack(track); setProgress(0); setIsPlaying(true); recordPlay(track.id); refreshDatabase();
+    const token = playbackTokenRef.current + 1; playbackTokenRef.current = token; disposeAudio(); setCurrentTrack(track); setProgress(0); setIsPlaying(false); recordPlay(track.id); refreshDatabase();
     if (requestedQueue?.length) setQueue(requestedQueue); else setQueue((items) => items.length ? items : tracks);
-    try { const audio = Platform.OS === "web" ? createAudioPlayer({ uri: track.sourceUri }) : new EqAudioPlayer({ uri: track.sourceUri, levels: equalizerLevels, playbackRate: playbackSpeed, onTime: (currentTime, duration, playing) => { if (playbackTokenRef.current !== token) return; setProgress(duration > 0 ? Math.min(1, currentTime / duration) : 0); setIsPlaying(playing); }, onEnded: () => { if (playbackTokenRef.current === token) advance(1); } }); if (playbackTokenRef.current !== token) { (audio as unknown as { remove?: () => void }).remove?.(); return; } audioRef.current = audio as ReturnType<typeof createAudioPlayer>; (audio as unknown as { setPlaybackRate?: (rate: number) => void; setEqualizer?: (levels: number[]) => void }).setPlaybackRate?.(playbackSpeed); (audio as unknown as { setEqualizer?: (levels: number[]) => void }).setEqualizer?.(equalizerLevels); audio.play();
+    try { const audio = Platform.OS === "web" ? createAudioPlayer(track.sourceUri) : new EqAudioPlayer({ uri: track.sourceUri, levels: equalizerLevels, playbackRate: playbackSpeed, onTime: (currentTime, duration, playing) => { if (playbackTokenRef.current !== token) return; setProgress(duration > 0 ? Math.min(1, currentTime / duration) : 0); setIsPlaying(playing); }, onEnded: () => { if (playbackTokenRef.current === token) advance(1); } }); if (playbackTokenRef.current !== token) { (audio as unknown as { remove?: () => void }).remove?.(); return; } audioRef.current = audio as ReturnType<typeof createAudioPlayer>; (audio as unknown as { setPlaybackRate?: (rate: number) => void; setEqualizer?: (levels: number[]) => void }).setPlaybackRate?.(playbackSpeed); (audio as unknown as { setEqualizer?: (levels: number[]) => void }).setEqualizer?.(equalizerLevels); void Promise.resolve(audio.play()).then(() => { if (playbackTokenRef.current === token) setIsPlaying(true); }).catch(() => { if (playbackTokenRef.current === token) { setIsPlaying(false); disposeAudio(); } });
       const subscription = Platform.OS === "web" ? (audio as unknown as { addListener?: (event: string, callback: (status: { currentTime?: number; duration?: number; playing?: boolean; didJustFinish?: boolean }) => void) => { remove: () => void } }).addListener?.("playbackStatusUpdate", (status) => { if (playbackTokenRef.current !== token) return; const duration = status.duration || track.durationSeconds; setProgress(duration > 0 ? Math.min(1, (status.currentTime || 0) / duration) : 0); setIsPlaying(Boolean(status.playing)); if (status.didJustFinish) advance(1); }) : undefined;
       (audio as unknown as { __mintuneSubscription?: { remove: () => void } }).__mintuneSubscription = subscription;
     } catch { if (playbackTokenRef.current === token) setIsPlaying(false); }
@@ -61,7 +62,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (nextIndex >= source.length || nextIndex < 0) { if (repeatMode === "off") { setIsPlaying(false); return; } nextIndex = (nextIndex + source.length) % source.length; }
     playTrack(source[nextIndex], source);
   }, [currentTrack, playTrack, queue, repeatMode, shuffle, tracks]);
-  const togglePlay = useCallback(() => { if (!currentTrack) return; try { if (isPlaying) { (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.(); setIsPlaying(false); } else { if (!audioRef.current) audioRef.current = createAudioPlayer({ uri: currentTrack.sourceUri }); (audioRef.current as unknown as { play?: () => void }).play?.(); setIsPlaying(true); } } catch { setIsPlaying(false); } }, [currentTrack, isPlaying]);
+  const pausePlayback = useCallback(() => { try { (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.(); setIsPlaying(false); } catch { setIsPlaying(false); } }, []);
+  const resumePlayback = useCallback(() => { if (!currentTrack) return; try { if (!audioRef.current) { audioRef.current = (Platform.OS === "web" ? createAudioPlayer(currentTrack.sourceUri) : new EqAudioPlayer({ uri: currentTrack.sourceUri, levels: equalizerLevels, playbackRate: playbackSpeed, onTime: (currentTime, duration, playing) => { setProgress(duration > 0 ? Math.min(1, currentTime / duration) : 0); setIsPlaying(playing); }, onEnded: () => advance(1) })) as ReturnType<typeof createAudioPlayer>; } void Promise.resolve((audioRef.current as unknown as { play?: () => void }).play?.()).then(() => setIsPlaying(true)).catch(() => setIsPlaying(false)); } catch { setIsPlaying(false); } }, [advance, currentTrack, equalizerLevels, playbackSpeed]);
+  const togglePlay = useCallback(() => { if (isPlaying) pausePlayback(); else resumePlayback(); }, [isPlaying, pausePlayback, resumePlayback]);
   const seek = useCallback((value: number) => { if (!currentTrack) return; const nextProgress = Math.min(1, Math.max(0, value)); setProgress(nextProgress); (audioRef.current as unknown as { seekTo?: (seconds: number) => void } | null)?.seekTo?.(nextProgress * currentTrack.durationSeconds); }, [currentTrack]);
   const setSpeed = useCallback((speed: number) => { const next = [0.75, 1, 1.25, 1.5].includes(speed) ? speed : 1; setPlaybackSpeedState(next); (audioRef.current as unknown as { setPlaybackRate?: (rate: number) => void } | null)?.setPlaybackRate?.(next); }, []);
   const setEqualizerLevels = useCallback((levels: number[]) => { const next = levels.map((level) => Math.max(-4, Math.min(4, Number(level) || 0))).slice(0, 5); while (next.length < 5) next.push(0); setEqualizerLevelsState(next); (audioRef.current as unknown as { setEqualizer?: (levels: number[]) => void } | null)?.setEqualizer?.(next); }, []);
@@ -81,6 +84,37 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const getPlaylistTracks = useCallback((playlistId: string) => { try { return getPlaylistTracksFromDatabase(playlistId); } catch { return []; } }, []);
   const saveMetadata = useCallback((track: Track) => { saveTrackMetadata(track); refreshDatabase(); }, [refreshDatabase]);
   const openPlayer = useCallback(() => { if (currentTrack && pathname !== "/player") router.push("/player" as never); }, [currentTrack, pathname, router]);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscriptions = [
+      PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => { resumePlayback(); }),
+      PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => { pausePlayback(); }),
+      PlaybackNotificationManager.addEventListener("playbackNotificationStop", () => { pausePlayback(); }),
+      PlaybackNotificationManager.addEventListener("playbackNotificationNextTrack", () => { advance(1); }),
+      PlaybackNotificationManager.addEventListener("playbackNotificationPreviousTrack", () => { advance(-1); }),
+    ];
+    return () => subscriptions.forEach((subscription) => subscription?.remove());
+  }, [advance, pausePlayback, resumePlayback]);
+  useEffect(() => {
+    if (Platform.OS === "web" || !currentTrack) return;
+    void PlaybackNotificationManager.show({
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: currentTrack.album,
+      artwork: currentTrack.coverUri && currentTrack.coverUri !== "mintune-local" ? currentTrack.coverUri : undefined,
+      duration: currentTrack.durationSeconds,
+      elapsedTime: progress * currentTrack.durationSeconds,
+      speed: playbackSpeed,
+      state: isPlaying ? "playing" : "paused",
+    }).then(() => Promise.all([
+      PlaybackNotificationManager.enableControl("play", true),
+      PlaybackNotificationManager.enableControl("pause", true),
+      PlaybackNotificationManager.enableControl("stop", true),
+      PlaybackNotificationManager.enableControl("nextTrack", true),
+      PlaybackNotificationManager.enableControl("previousTrack", true),
+      PlaybackNotificationManager.enableControl("seekTo", true),
+    ])).catch(() => undefined);
+  }, [currentTrack, isPlaying, playbackSpeed, progress]);
   const value = useMemo(() => ({ currentTrack, tracks, queue, playlists, favorites, history, isReady, isPlaying, progress, repeatMode, shuffle, playbackSpeed, sleepRemaining, equalizerLevels, setEqualizerLevels, playTrack, togglePlay, next: () => advance(1), previous: () => advance(-1), seek, setPlaybackSpeed: setSpeed, cycleRepeatMode, toggleShuffle, setSleepTimer: setSleepRemaining, toggleFavoriteTrack, addToQueue, removeFromQueue, moveInQueue, clearQueue, createPlaylist, renamePlaylist, deletePlaylist, addTrackToPlaylist: addTrack, removeTrackFromPlaylist: removeTrack, getPlaylistTracks, saveTrackMetadata: saveMetadata, refreshDatabase, scanLocalMusic, openPlayer }), [addTrack, addToQueue, advance, clearQueue, createPlaylist, currentTrack, cycleRepeatMode, deletePlaylist, equalizerLevels, favorites, getPlaylistTracks, history, isPlaying, isReady, moveInQueue, openPlayer, playbackSpeed, playlists, playTrack, progress, queue, refreshDatabase, removeFromQueue, removeTrack, repeatMode, saveMetadata, scanLocalMusic, seek, setEqualizerLevels, setSpeed, shuffle, sleepRemaining, toggleFavoriteTrack, togglePlay, tracks, renamePlaylist, toggleShuffle]);
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }
