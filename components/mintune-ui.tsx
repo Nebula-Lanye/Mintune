@@ -237,9 +237,11 @@ export function TrackRow({
 export function MiniPlayer({
   floating = false,
   bottomOffset = 0,
+  desktop = false,
 }: {
   floating?: boolean;
   bottomOffset?: number;
+  desktop?: boolean;
 }) {
   const player = usePlayer();
   if (!player.currentTrack) return null;
@@ -249,6 +251,7 @@ export function MiniPlayer({
       style={({ pressed }) => [
         styles.miniPlayer,
         floating && styles.miniPlayerFloating,
+        desktop && styles.miniPlayerDesktop,
         floating && { bottom: bottomOffset },
         pressed && styles.pressed,
       ]}
@@ -784,6 +787,23 @@ export const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginBottom: 0,
     zIndex: 20,
+  },
+  miniPlayerDesktop: {
+    position: "absolute",
+    left: 238,
+    right: 14,
+    bottom: 14,
+    minHeight: 64,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    zIndex: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   searchBar: {
     height: 50,

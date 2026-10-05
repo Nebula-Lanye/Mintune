@@ -100,6 +100,7 @@ Artifact 默认保留 14 天。
 
 - Windows runner 生成 NSIS 安装包：`.exe`
 - Ubuntu runner 生成 Debian 安装包：`.deb`
+- 桌面端 Web/Tauri 界面使用左侧常驻导航、宽内容工作区和底部播放控制栏，不复用移动端底部 Tab 放大布局。
 - 桌面端版本与 `package.json`、`app.config.ts`、`lib/mintune-data.ts` 和 `src-tauri/` 中的版本必须一致。
 - 可在 GitHub Actions 中手动运行 **Build Desktop Apps**，也可以推送 `desktop-v*` 标签触发构建。
 
