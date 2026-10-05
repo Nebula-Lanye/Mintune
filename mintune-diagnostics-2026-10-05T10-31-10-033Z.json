@@ -1,0 +1,510 @@
+{
+  "app": "Mintune",
+  "schema": "v2",
+  "exportedAt": "2026-10-05T10:31:10.033Z",
+  "sessionId": "1791195907086-9s9yst",
+  "device": {
+    "platform": "android",
+    "appVersion": "0.4.605",
+    "nativeBuildVersion": "unknown",
+    "screen": {
+      "width": 384,
+      "height": 853.3333333333334,
+      "scale": 2.8125
+    },
+    "sessionId": "1791195907086-9s9yst"
+  },
+  "entries": [
+    {
+      "seq": 1,
+      "at": "2026-10-05T10:24:44.990Z",
+      "sessionId": "1791195884459-au87js",
+      "type": "event",
+      "message": "app_start",
+      "context": {
+        "platform": "android",
+        "appVersion": "0.4.605",
+        "nativeBuildVersion": "unknown",
+        "screen": {
+          "width": 384,
+          "height": 853.3333333333334,
+          "scale": 2.8125
+        },
+        "sessionId": "1791195884459-au87js",
+        "previousSession": null
+      }
+    },
+    {
+      "seq": 2,
+      "at": "2026-10-05T10:25:03.833Z",
+      "sessionId": "1791195884459-au87js",
+      "type": "event",
+      "message": "play_track",
+      "context": {
+        "trackId": "local-62958",
+        "title": "我不曾忘记",
+        "source": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac"
+      }
+    },
+    {
+      "seq": 3,
+      "at": "2026-10-05T10:25:03.855Z",
+      "sessionId": "1791195884459-au87js",
+      "type": "event",
+      "message": "native_player_constructor",
+      "context": {
+        "uri": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac",
+        "levels": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "playbackRate": 1
+      }
+    },
+    {
+      "seq": 4,
+      "at": "2026-10-05T10:25:03.948Z",
+      "sessionId": "1791195884459-au87js",
+      "type": "event",
+      "message": "native_player_graph_ready",
+      "context": {
+        "uri": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac",
+        "duration": 230.51498413085938,
+        "contextState": "suspended"
+      }
+    },
+    {
+      "seq": 1,
+      "at": "2026-10-05T10:25:07.331Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "app_start",
+      "context": {
+        "platform": "android",
+        "appVersion": "0.4.605",
+        "nativeBuildVersion": "unknown",
+        "screen": {
+          "width": 384,
+          "height": 853.3333333333334,
+          "scale": 2.8125
+        },
+        "sessionId": "1791195907086-9s9yst",
+        "previousSession": {
+          "sessionId": "1791195884459-au87js",
+          "at": "2026-10-05T10:25:03.948Z",
+          "type": "event",
+          "message": "native_player_graph_ready",
+          "context": {
+            "uri": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac",
+            "duration": 230.51498413085938,
+            "contextState": "suspended"
+          }
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "at": "2026-10-05T10:25:08.746Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "play_track",
+      "context": {
+        "trackId": "local-62958",
+        "title": "我不曾忘记",
+        "source": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac"
+      }
+    },
+    {
+      "seq": 3,
+      "at": "2026-10-05T10:25:08.763Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_constructor",
+      "context": {
+        "uri": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac",
+        "levels": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "playbackRate": 1
+      }
+    },
+    {
+      "seq": 4,
+      "at": "2026-10-05T10:25:08.810Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_graph_ready",
+      "context": {
+        "uri": "file:///storage/emulated/0/MoBiMusic/我不曾忘记-花玲 _ 张安琪 _ 沐霏-0048PqsG4P0ewv.flac",
+        "duration": 230.51498413085938,
+        "contextState": "suspended"
+      }
+    },
+    {
+      "seq": 5,
+      "at": "2026-10-05T10:25:08.810Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_play",
+      "context": {
+        "currentTime": 0,
+        "duration": 230.51498413085938,
+        "contextState": "suspended",
+        "started": false
+      }
+    },
+    {
+      "seq": 6,
+      "at": "2026-10-05T10:25:08.978Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 0,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 7,
+      "at": "2026-10-05T10:25:14.133Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 5.119999999999968,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 8,
+      "at": "2026-10-05T10:25:19.121Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 10.11199999999942,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 9,
+      "at": "2026-10-05T10:25:24.109Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 15.098666666665537,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 10,
+      "at": "2026-10-05T10:25:29.097Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 20.085333333331654,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 11,
+      "at": "2026-10-05T10:25:34.085Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 25.07199999999777,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 12,
+      "at": "2026-10-05T10:25:39.073Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 30.05866666666389,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 13,
+      "at": "2026-10-05T10:25:44.061Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 35.050666666667404,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 14,
+      "at": "2026-10-05T10:25:49.049Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 40.037333333340165,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 15,
+      "at": "2026-10-05T10:25:54.037Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 45.024000000012926,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 16,
+      "at": "2026-10-05T10:25:59.025Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 50.01600000001903,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 17,
+      "at": "2026-10-05T10:26:04.013Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 55.00266666669179,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 18,
+      "at": "2026-10-05T10:26:09.167Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 60.154666666698084,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 19,
+      "at": "2026-10-05T10:26:14.156Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 65.14666666670418,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 20,
+      "at": "2026-10-05T10:26:19.143Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 70.13333333337694,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 21,
+      "at": "2026-10-05T10:26:24.131Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 75.1200000000497,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 22,
+      "at": "2026-10-05T10:26:29.119Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 80.10666666672246,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 23,
+      "at": "2026-10-05T10:26:34.107Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 85.09333333339522,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 24,
+      "at": "2026-10-05T10:26:39.097Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 90.08533333340132,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 25,
+      "at": "2026-10-05T10:26:44.083Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 95.07200000007408,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 26,
+      "at": "2026-10-05T10:26:49.070Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_heartbeat",
+      "context": {
+        "currentTime": 100.05866666674684,
+        "duration": 230.51498413085938,
+        "playing": true,
+        "contextState": "running"
+      }
+    },
+    {
+      "seq": 27,
+      "at": "2026-10-05T10:26:53.119Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "pause",
+      "context": {
+        "trackId": "local-62958"
+      }
+    },
+    {
+      "seq": 28,
+      "at": "2026-10-05T10:26:53.119Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "native_player_pause",
+      "context": {
+        "currentTime": 104.10666666675179,
+        "duration": 230.51498413085938
+      }
+    },
+    {
+      "seq": 29,
+      "at": "2026-10-05T10:26:56.778Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "export_diagnostics"
+    },
+    {
+      "seq": 30,
+      "at": "2026-10-05T10:26:56.835Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "app_state",
+      "context": {
+        "state": "background",
+        "platform": "android",
+        "appVersion": "0.4.605",
+        "nativeBuildVersion": "unknown",
+        "screen": {
+          "width": 384,
+          "height": 853.3333333333334,
+          "scale": 2.8125
+        },
+        "sessionId": "1791195907086-9s9yst"
+      }
+    },
+    {
+      "seq": 31,
+      "at": "2026-10-05T10:31:08.064Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "app_state",
+      "context": {
+        "state": "active",
+        "platform": "android",
+        "appVersion": "0.4.605",
+        "nativeBuildVersion": "unknown",
+        "screen": {
+          "width": 384,
+          "height": 853.3333333333334,
+          "scale": 2.8125
+        },
+        "sessionId": "1791195907086-9s9yst"
+      }
+    },
+    {
+      "seq": 32,
+      "at": "2026-10-05T10:31:10.026Z",
+      "sessionId": "1791195907086-9s9yst",
+      "type": "event",
+      "message": "export_diagnostics"
+    }
+  ]
+}
