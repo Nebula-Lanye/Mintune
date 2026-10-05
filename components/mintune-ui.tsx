@@ -51,16 +51,18 @@ export function Cover({
 }) {
   const fallback = require("@/assets/images/mintune-icon.png");
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [track.coverUri]);
+  useEffect(() => setFailed(false), [track.id, track.coverUri]);
+  const coverUri = track.coverUri.startsWith("/")
+    ? `file://${track.coverUri}`
+    : track.coverUri;
   const source =
-    failed || track.coverUri === "mintune-local"
-      ? fallback
-      : { uri: track.coverUri };
+    failed || track.coverUri === "mintune-local" ? fallback : { uri: coverUri };
   return (
     <Image
       accessibilityLabel={`${track.title} / ${track.artist} 专辑封面`}
       source={source}
       defaultSource={fallback}
+      onLoad={() => setFailed(false)}
       onError={() => setFailed(true)}
       style={[
         {
@@ -131,6 +133,7 @@ export function TrackRow({
   const router = useRouter();
   const player = usePlayer();
   const [showActions, setShowActions] = useState(false);
+  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const isActive = player.currentTrack?.id === track.id;
   const handlePress = () => {
     if (onPress) onPress(track);
@@ -202,11 +205,11 @@ export function TrackRow({
               : "favorite-border",
             onPress: () => player.toggleFavoriteTrack(track.id),
           },
-          ...player.playlists.map((playlist) => ({
-            label: `添加到「${playlist.name}」`,
-            icon: "playlist-add" as IconName,
-            onPress: () => player.addTrackToPlaylist(playlist.id, track.id),
-          })),
+          {
+            label: "添加到歌单",
+            icon: "playlist-add",
+            onPress: () => setShowPlaylistPicker(true),
+          },
           {
             label: "打开播放器",
             icon: "play-circle-outline",
@@ -216,6 +219,16 @@ export function TrackRow({
             },
           },
         ]}
+      />
+      <ActionSheet
+        visible={showPlaylistPicker}
+        title="选择歌单"
+        onClose={() => setShowPlaylistPicker(false)}
+        items={player.playlists.map((playlist) => ({
+          label: playlist.name,
+          icon: "queue-music" as IconName,
+          onPress: () => player.addTrackToPlaylist(playlist.id, track.id),
+        }))}
       />
     </Pressable>
   );
