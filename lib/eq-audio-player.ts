@@ -1,4 +1,5 @@
 import { AudioContext, AudioNode, BiquadFilterNode } from "react-native-audio-api";
+import { logError, logEvent } from "@/lib/diagnostics";
 
 type NativeAudioFileSourceNode = AudioNode & {
   attach: (options: { loop: boolean; onEnded: () => void }) => { duration: number };
@@ -45,10 +46,12 @@ export class EqAudioPlayer {
   private disposed = false;
   private playing = false;
   private started = false;
+  private lastLoggedSecond = -1;
   private readonly onTime: Options["onTime"];
   private readonly onEnded: Options["onEnded"];
 
   constructor(options: Options) {
+    logEvent("native_player_constructor", { uri: options.uri, levels: options.levels, playbackRate: options.playbackRate });
     this.context = new AudioContext();
     const raw = this.context.context.createFileSource({
       // Audio API expects a filesystem path, not Expo's file:// URI.
@@ -71,6 +74,7 @@ export class EqAudioPlayer {
       loop: false,
       onEnded: () => {
         if (this.disposed) return;
+        logEvent("native_player_ended", { uri: options.uri, currentTime: this.raw.currentTime, duration: this.raw.duration });
         this.playing = false;
         this.onEnded();
       },
@@ -90,12 +94,18 @@ export class EqAudioPlayer {
       node = node.connect(filter);
     });
     node.connect(this.context.destination);
+    logEvent("native_player_graph_ready", { uri: options.uri, duration: this.raw.duration, contextState: this.context.state });
 
     this.timer = setInterval(() => {
       if (this.disposed) return;
       const duration = this.raw.duration || 0;
       const current = this.raw.currentTime;
       this.onTime(current, duration, this.playing);
+      const second = Math.floor(current);
+      if (this.playing && second >= 0 && second % 5 === 0 && second !== this.lastLoggedSecond) {
+        this.lastLoggedSecond = second;
+        logEvent("native_player_heartbeat", { currentTime: current, duration, playing: this.playing, contextState: this.context.state });
+      }
       if (this.playing && duration > 0 && current >= duration - 0.15) {
         this.playing = false;
         this.onEnded();
@@ -105,6 +115,7 @@ export class EqAudioPlayer {
 
   async play() {
     if (this.disposed) return;
+    logEvent("native_player_play", { currentTime: this.raw.currentTime, duration: this.raw.duration, contextState: this.context.state, started: this.started });
     if (this.context.state === "suspended") await this.context.resume();
     if (this.disposed) return;
     // The package wrapper intentionally bypasses the one-shot start guard,
@@ -116,12 +127,13 @@ export class EqAudioPlayer {
 
   pause() {
     if (this.disposed || !this.started) return;
+    logEvent("native_player_pause", { currentTime: this.raw.currentTime, duration: this.raw.duration });
     this.source.pause();
     this.playing = false;
   }
 
   seekTo(seconds: number) {
-    if (!this.disposed) this.source.seekToTime(Math.max(0, seconds));
+    if (!this.disposed) { logEvent("native_player_seek", { from: this.raw.currentTime, to: seconds, duration: this.raw.duration }); this.source.seekToTime(Math.max(0, seconds)); }
   }
 
   setPlaybackRate(rate: number) {
@@ -137,6 +149,7 @@ export class EqAudioPlayer {
 
   remove() {
     if (this.disposed) return;
+    logEvent("native_player_remove", { currentTime: this.raw.currentTime, duration: this.raw.duration, playing: this.playing });
     this.disposed = true;
     this.playing = false;
     clearInterval(this.timer);
@@ -144,7 +157,8 @@ export class EqAudioPlayer {
       this.source.pause();
       this.source.dispose();
       this.source.disconnect();
-    } catch {
+    } catch (error) {
+      logError(error, { source: "native_player_remove" });
       // Best effort during app shutdown.
     }
     void this.context.close();
