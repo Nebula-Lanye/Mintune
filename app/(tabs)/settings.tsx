@@ -4,9 +4,9 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { Icon, PageHeader, ScanProgressModal, styles as ui } from "@/components/mintune-ui";
+import { AppDialog, Icon, PageHeader, ScanProgressModal, styles as ui } from "@/components/mintune-ui";
 import { APP_VERSION, COLORS, PLAYBACK_SPEEDS, SUPPORTED_FORMATS } from "@/lib/mintune-data";
 import { usePlayer } from "@/lib/player-context";
 import { useThemeContext } from "@/lib/theme-provider";
@@ -14,9 +14,9 @@ import { exportDatabaseBackup, importDatabaseBackup } from "@/lib/database";
 
 export default function SettingsScreen() {
   const router = useRouter(); const player = usePlayer(); const { colorScheme, setColorScheme } = useThemeContext();
-  const [quality, setQuality] = useState("自动"); const [scanning, setScanning] = useState(false); const [scanVisible, setScanVisible] = useState(false); const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, filename: "", recent: [] as string[] });
+  const [quality, setQuality] = useState("自动"); const [scanning, setScanning] = useState(false); const [scanVisible, setScanVisible] = useState(false); const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, filename: "", recent: [] as string[] }); const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
   const darkMode = colorScheme === "dark"; const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? APP_VERSION;
-  const openMessage = (title: string, message: string) => Alert.alert(title, message);
+  const openMessage = (title: string, message: string) => setDialog({ title, message });
   const scanMusic = async () => { if (scanning) return; setScanning(true); setScanVisible(true); setScanProgress({ current: 0, total: 0, filename: "准备扫描…", recent: [] }); try { const count = await player.scanLocalMusic((progress) => setScanProgress((state) => ({ current: progress.current, total: progress.total, filename: progress.filename, recent: progress.track ? [...state.recent, progress.track.title] : state.recent }))); setScanProgress((state) => ({ ...state, current: count, total: Math.max(count, state.total), filename: `扫描完成，共 ${count} 首歌曲` })); } catch (error) { setScanVisible(false); openMessage("无法扫描音乐", error instanceof Error ? error.message : "请检查音乐访问权限后重试。"); } finally { setScanning(false); } };
   const nextSpeed = PLAYBACK_SPEEDS[(PLAYBACK_SPEEDS.indexOf(player.playbackSpeed) + 1) % PLAYBACK_SPEEDS.length];
   const sleepLabel = player.sleepRemaining == null ? "关闭" : `${player.sleepRemaining} 分钟后停止`;
@@ -32,7 +32,7 @@ export default function SettingsScreen() {
     <SettingGroup title="数据安全"><SettingRow icon="file-download" title="导出本地备份" subtitle="保存歌曲元数据、歌单、收藏和播放历史" onPress={backupData} /><SettingRow icon="file-upload" title="恢复本地备份" subtitle="从 JSON 备份文件恢复，不上传到服务器" onPress={restoreData} /></SettingGroup>
     <SettingGroup title="关于 Mintune"><SettingRow icon="info-outline" title="关于 Mintune" subtitle={`版本 ${appVersion} · softly in tune`} onPress={() => openMessage("Mintune", `版本 ${appVersion}\nsoftly in tune`)} /><SettingRow icon="feedback" title="反馈建议" subtitle="欢迎通过 GitHub 项目提交建议" onPress={() => openMessage("反馈建议", "感谢你的反馈！请通过 GitHub 仓库提交建议。")}/></SettingGroup>
     <Text style={styles.footer}>Mintune · softly in tune · 2026</Text>
-  </ScrollView><ScanProgressModal visible={scanVisible} current={scanProgress.current} total={scanProgress.total} filename={scanProgress.filename} recent={scanProgress.recent} onClose={() => setScanVisible(false)} /></ScreenContainer>;
+  </ScrollView><ScanProgressModal visible={scanVisible} current={scanProgress.current} total={scanProgress.total} filename={scanProgress.filename} recent={scanProgress.recent} onClose={() => setScanVisible(false)} /><AppDialog visible={Boolean(dialog)} title={dialog?.title ?? ""} message={dialog?.message ?? ""} onClose={() => setDialog(null)} /></ScreenContainer>;
 }
 function SettingGroup({ title, children }: { title: string; children: React.ReactNode }) { return <View style={styles.group}><Text style={styles.groupTitle}>{title}</Text><View style={styles.groupCard}>{children}</View></View>; }
 function SettingRow({ icon, title, subtitle, right, onPress }: { icon: React.ComponentProps<typeof Icon>["name"]; title: string; subtitle: string; right?: React.ReactNode; onPress?: () => void }) { return <Pressable disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && ui.pressed]}><View style={styles.rowIcon}><Icon name={icon} size={19} color={COLORS.mint} /></View><View style={styles.rowCopy}><Text style={styles.rowTitle}>{title}</Text><Text numberOfLines={2} style={styles.rowSubtitle}>{subtitle}</Text></View>{right ?? <Icon name="chevron-right" size={19} color={COLORS.subtle} />}</Pressable>; }

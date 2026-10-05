@@ -71,6 +71,32 @@ export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: stri
   return <Animated.View style={[styles.pageHeader, { opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}><View style={styles.pageHeaderCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>{right}</Animated.View>;
 }
 
+export function AppDialog({ visible, title, message, onClose, actionLabel = "知道了" }: { visible: boolean; title: string; message: string; onClose: () => void; actionLabel?: string }) {
+  const backdrop = useRef(new Animated.Value(0)).current;
+  const card = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) return;
+    backdrop.setValue(0);
+    card.setValue(0);
+    Animated.parallel([
+      Animated.timing(backdrop, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(card, { toValue: 1, damping: 16, stiffness: 190, mass: 0.8, useNativeDriver: true }),
+    ]).start();
+  }, [backdrop, card, visible]);
+  return <Modal transparent visible={visible} animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Animated.View style={[styles.dialogBackdrop, { opacity: backdrop }]}>
+      <Animated.View style={[styles.dialogCard, { opacity: card, transform: [{ translateY: card.interpolate({ inputRange: [0, 1], outputRange: [42, 0] }) }, { scale: card.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) }] }]}>
+        <View style={styles.dialogGlow}><Icon name="auto-awesome" size={22} color={COLORS.mint} /></View>
+        <Text style={styles.dialogTitle}>{title}</Text>
+        <Text style={styles.dialogMessage}>{message}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onClose} style={({ pressed }) => [styles.dialogButton, pressed && styles.dialogButtonPressed]}>
+          <Text style={styles.dialogButtonText}>{actionLabel}</Text>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  </Modal>;
+}
+
 export function ScanProgressModal({ visible, current, total, filename, recent, onClose }: { visible: boolean; current: number; total: number; filename: string; recent: string[]; onClose: () => void }) {
   const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => { if (!visible) return; spin.setValue(0); const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true })); loop.start(); return () => loop.stop(); }, [spin, visible]);
@@ -130,4 +156,12 @@ export const styles = StyleSheet.create({
   scanButton: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 18, borderRadius: 16, backgroundColor: COLORS.mint },
   scanDisabled: { opacity: 0.45 },
   scanButtonText: { color: COLORS.background, fontSize: 14, fontWeight: "800" },
+  dialogBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 22, backgroundColor: "rgba(2,8,18,0.78)" },
+  dialogCard: { width: "100%", maxWidth: 430, minHeight: 236, padding: 28, borderRadius: 30, backgroundColor: "rgba(24,49,76,0.98)", borderWidth: 1, borderColor: "rgba(188,255,246,0.34)", shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 24 },
+  dialogGlow: { width: 46, height: 46, alignItems: "center", justifyContent: "center", marginBottom: 15, borderRadius: 16, backgroundColor: "rgba(94,234,212,0.14)", borderWidth: 1, borderColor: "rgba(94,234,212,0.22)" },
+  dialogTitle: { color: COLORS.text, fontSize: 22, lineHeight: 28, fontWeight: "900", letterSpacing: -0.3 },
+  dialogMessage: { color: COLORS.muted, fontSize: 14, lineHeight: 21, marginTop: 10 },
+  dialogButton: { height: 50, alignItems: "center", justifyContent: "center", marginTop: 25, borderRadius: 17, backgroundColor: COLORS.mint },
+  dialogButtonPressed: { opacity: 0.78, transform: [{ scale: 0.97 }] },
+  dialogButtonText: { color: COLORS.background, fontSize: 14, fontWeight: "900" },
 });
