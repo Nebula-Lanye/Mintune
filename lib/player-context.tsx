@@ -16,7 +16,7 @@ type PlayerContextValue = {
   toggleFavoriteTrack: (trackId?: string) => void; addToQueue: (track: Track) => void; removeFromQueue: (trackId: string) => void; moveInQueue: (from: number, to: number) => void; clearQueue: () => void;
   createPlaylist: (name: string) => StoredPlaylist; renamePlaylist: (id: string, name: string) => void; deletePlaylist: (id: string) => void;
   addTrackToPlaylist: (playlistId: string, trackId: string) => void; removeTrackFromPlaylist: (playlistId: string, trackId: string) => void; getPlaylistTracks: (playlistId: string) => Track[];
-  saveTrackMetadata: (track: Track) => void; refreshDatabase: () => void; scanLocalMusic: (onProgress?: (progress: ScanProgress) => void) => Promise<number>; openPlayer: () => void;
+  equalizerLevels: number[]; setEqualizerLevels: (levels: number[]) => void; saveTrackMetadata: (track: Track) => void; refreshDatabase: () => void; scanLocalMusic: (onProgress?: (progress: ScanProgress) => void) => Promise<number>; openPlayer: () => void;
 };
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
@@ -26,6 +26,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null); const [queue, setQueue] = useState<Track[]>([]); const [history, setHistory] = useState<Track[]>([]);
   const [isReady, setIsReady] = useState(false); const [isPlaying, setIsPlaying] = useState(false); const [progress, setProgress] = useState(0);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off"); const [shuffle, setShuffle] = useState(false); const [playbackSpeed, setPlaybackSpeedState] = useState(1); const [sleepRemaining, setSleepRemaining] = useState<number | null>(null);
+  const [equalizerLevels, setEqualizerLevelsState] = useState([0, 0, 0, 0, 0]);
   const audioRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null); const playbackTokenRef = useRef(0);
 
   const disposeAudio = useCallback(() => { const audio = audioRef.current as unknown as DisposableAudio | null; audioRef.current = null; disposeAudioPlayer(audio); }, []);
@@ -44,11 +45,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const playTrack = useCallback((track: Track, requestedQueue?: Track[]) => {
     const token = playbackTokenRef.current + 1; playbackTokenRef.current = token; disposeAudio(); setCurrentTrack(track); setProgress(0); setIsPlaying(true); recordPlay(track.id); refreshDatabase();
     if (requestedQueue?.length) setQueue(requestedQueue); else setQueue((items) => items.length ? items : tracks);
-    try { const audio = createAudioPlayer({ uri: track.sourceUri }); if (playbackTokenRef.current !== token) { (audio as unknown as { remove?: () => void }).remove?.(); return; } audioRef.current = audio; (audio as unknown as { setPlaybackRate?: (rate: number) => void }).setPlaybackRate?.(playbackSpeed); audio.play();
+    try { const audio = createAudioPlayer({ uri: track.sourceUri }); if (playbackTokenRef.current !== token) { (audio as unknown as { remove?: () => void }).remove?.(); return; } audioRef.current = audio; (audio as unknown as { setPlaybackRate?: (rate: number) => void; setEqualizer?: (levels: number[]) => void }).setPlaybackRate?.(playbackSpeed); (audio as unknown as { setEqualizer?: (levels: number[]) => void }).setEqualizer?.(equalizerLevels); audio.play();
       const subscription = (audio as unknown as { addListener?: (event: string, callback: (status: { currentTime?: number; duration?: number; playing?: boolean; didJustFinish?: boolean }) => void) => { remove: () => void } }).addListener?.("playbackStatusUpdate", (status) => { if (playbackTokenRef.current !== token) return; const duration = status.duration || track.durationSeconds; setProgress(duration > 0 ? Math.min(1, (status.currentTime || 0) / duration) : 0); setIsPlaying(Boolean(status.playing)); if (status.didJustFinish) advance(1); });
       (audio as unknown as { __mintuneSubscription?: { remove: () => void } }).__mintuneSubscription = subscription;
     } catch { if (playbackTokenRef.current === token) setIsPlaying(false); }
-  }, [disposeAudio, playbackSpeed, refreshDatabase, tracks]);
+  }, [disposeAudio, equalizerLevels, playbackSpeed, refreshDatabase, tracks]);
 
   const advance = useCallback((direction: 1 | -1) => {
     if (!currentTrack) return;
@@ -62,6 +63,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const togglePlay = useCallback(() => { if (!currentTrack) return; try { if (isPlaying) { (audioRef.current as unknown as { pause?: () => void } | null)?.pause?.(); setIsPlaying(false); } else { if (!audioRef.current) audioRef.current = createAudioPlayer({ uri: currentTrack.sourceUri }); (audioRef.current as unknown as { play?: () => void }).play?.(); setIsPlaying(true); } } catch { setIsPlaying(false); } }, [currentTrack, isPlaying]);
   const seek = useCallback((value: number) => { if (!currentTrack) return; const nextProgress = Math.min(1, Math.max(0, value)); setProgress(nextProgress); (audioRef.current as unknown as { seekTo?: (seconds: number) => void } | null)?.seekTo?.(nextProgress * currentTrack.durationSeconds); }, [currentTrack]);
   const setSpeed = useCallback((speed: number) => { const next = [0.75, 1, 1.25, 1.5].includes(speed) ? speed : 1; setPlaybackSpeedState(next); (audioRef.current as unknown as { setPlaybackRate?: (rate: number) => void } | null)?.setPlaybackRate?.(next); }, []);
+  const setEqualizerLevels = useCallback((levels: number[]) => { const next = levels.map((level) => Math.max(-4, Math.min(4, Number(level) || 0))).slice(0, 5); while (next.length < 5) next.push(0); setEqualizerLevelsState(next); (audioRef.current as unknown as { setEqualizer?: (levels: number[]) => void } | null)?.setEqualizer?.(next); }, []);
   const cycleRepeatMode = useCallback(() => setRepeatMode((mode) => mode === "off" ? "all" : mode === "all" ? "one" : "off"), []);
   const toggleShuffle = useCallback(() => setShuffle((value) => !value), []);
   const toggleFavoriteTrack = useCallback((trackId = currentTrack?.id) => { if (!trackId) return; const next = favorites.includes(trackId) ? favorites.filter((item) => item !== trackId) : [...favorites, trackId]; setFavorite(trackId, next.includes(trackId)); setFavorites(next); }, [currentTrack, favorites]);
@@ -78,7 +80,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const getPlaylistTracks = useCallback((playlistId: string) => { try { return getPlaylistTracksFromDatabase(playlistId); } catch { return []; } }, []);
   const saveMetadata = useCallback((track: Track) => { saveTrackMetadata(track); refreshDatabase(); }, [refreshDatabase]);
   const openPlayer = useCallback(() => { if (currentTrack && pathname !== "/player") router.push("/player" as never); }, [currentTrack, pathname, router]);
-  const value = useMemo(() => ({ currentTrack, tracks, queue, playlists, favorites, history, isReady, isPlaying, progress, repeatMode, shuffle, playbackSpeed, sleepRemaining, playTrack, togglePlay, next: () => advance(1), previous: () => advance(-1), seek, setPlaybackSpeed: setSpeed, cycleRepeatMode, toggleShuffle, setSleepTimer: setSleepRemaining, toggleFavoriteTrack, addToQueue, removeFromQueue, moveInQueue, clearQueue, createPlaylist, renamePlaylist, deletePlaylist, addTrackToPlaylist: addTrack, removeTrackFromPlaylist: removeTrack, getPlaylistTracks, saveTrackMetadata: saveMetadata, refreshDatabase, scanLocalMusic, openPlayer }), [addTrack, addToQueue, advance, clearQueue, createPlaylist, currentTrack, cycleRepeatMode, deletePlaylist, favorites, getPlaylistTracks, history, isPlaying, isReady, moveInQueue, openPlayer, playbackSpeed, playlists, playTrack, progress, queue, refreshDatabase, removeFromQueue, removeTrack, repeatMode, saveMetadata, scanLocalMusic, seek, setSpeed, shuffle, sleepRemaining, toggleFavoriteTrack, togglePlay, tracks, renamePlaylist, toggleShuffle]);
+  const value = useMemo(() => ({ currentTrack, tracks, queue, playlists, favorites, history, isReady, isPlaying, progress, repeatMode, shuffle, playbackSpeed, sleepRemaining, equalizerLevels, setEqualizerLevels, playTrack, togglePlay, next: () => advance(1), previous: () => advance(-1), seek, setPlaybackSpeed: setSpeed, cycleRepeatMode, toggleShuffle, setSleepTimer: setSleepRemaining, toggleFavoriteTrack, addToQueue, removeFromQueue, moveInQueue, clearQueue, createPlaylist, renamePlaylist, deletePlaylist, addTrackToPlaylist: addTrack, removeTrackFromPlaylist: removeTrack, getPlaylistTracks, saveTrackMetadata: saveMetadata, refreshDatabase, scanLocalMusic, openPlayer }), [addTrack, addToQueue, advance, clearQueue, createPlaylist, currentTrack, cycleRepeatMode, deletePlaylist, equalizerLevels, favorites, getPlaylistTracks, history, isPlaying, isReady, moveInQueue, openPlayer, playbackSpeed, playlists, playTrack, progress, queue, refreshDatabase, removeFromQueue, removeTrack, repeatMode, saveMetadata, scanLocalMusic, seek, setEqualizerLevels, setSpeed, shuffle, sleepRemaining, toggleFavoriteTrack, togglePlay, tracks, renamePlaylist, toggleShuffle]);
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }
 export function usePlayer() { const value = useContext(PlayerContext); if (!value) throw new Error("usePlayer must be used inside PlayerProvider"); return value; }
