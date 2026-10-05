@@ -106,7 +106,7 @@ export default function StorageScreen() {
           }
           description="应用内部的分会话日志和已导出的诊断 JSON。"
           button="清理日志"
-          disabled={!summary || summary.diagnosticFiles === 0}
+        disabled={!summary}
           busy={busy === "logs"}
           onPress={() => clean("logs")}
         />
