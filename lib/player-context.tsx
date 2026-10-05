@@ -1,7 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import { usePathname, useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Image, Platform } from "react-native";
 import type { Track } from "@/lib/mintune-data";
 import { addTrackToPlaylist, createPlaylist as createPlaylistRecord, deletePlaylist as deletePlaylistRecord, getDatabaseState, getPlaylistTracksFromDatabase, initializeDatabase, listPlayHistory, recordPlay, removeTrackFromPlaylist, renamePlaylist as renamePlaylistRecord, saveTrackMetadata, setFavorite, type StoredPlaylist } from "@/lib/database";
 import { scanLocalAudio, type ScanProgress } from "@/lib/local-media";
@@ -22,6 +22,14 @@ type PlayerContextValue = {
   equalizerLevels: number[]; setEqualizerLevels: (levels: number[]) => void; saveTrackMetadata: (track: Track) => void; refreshDatabase: () => void; scanLocalMusic: (onProgress?: (progress: ScanProgress) => void) => Promise<number>; openPlayer: () => void;
 };
 const PlayerContext = createContext<PlayerContextValue | null>(null);
+
+function notificationArtwork(coverUri: string) {
+  if (!coverUri || coverUri === "mintune-local") {
+    return Image.resolveAssetSource(require("@/assets/images/mintune-icon.png"))?.uri;
+  }
+  if (coverUri.startsWith("/") && !coverUri.startsWith("//")) return `file://${coverUri}`;
+  return coverUri;
+}
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname();
@@ -102,7 +110,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       title: currentTrack.title,
       artist: currentTrack.artist,
       album: currentTrack.album,
-      artwork: currentTrack.coverUri && currentTrack.coverUri !== "mintune-local" ? currentTrack.coverUri : undefined,
+      artwork: notificationArtwork(currentTrack.coverUri),
       duration: currentTrack.durationSeconds,
       elapsedTime: progress * currentTrack.durationSeconds,
       speed: playbackSpeed,
