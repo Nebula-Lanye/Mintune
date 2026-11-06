@@ -36,7 +36,9 @@ jobs:
       - name: Copy APK to artifacts
         run: |
           mkdir -p artifacts
-          cp android-native/app/build/outputs/apk/release/app-release.apk artifacts/mintune-native-java.apk
+          APK=$(find android-native/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          cp "$APK" artifacts/mintune-native-java.apk
 
       - name: Upload native Java APK
         uses: actions/upload-artifact@v5
