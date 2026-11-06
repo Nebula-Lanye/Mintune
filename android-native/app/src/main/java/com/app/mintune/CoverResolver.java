@@ -1,6 +1,6 @@
 package com.app.mintune;
 
-import android.content.ContentResolver;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -9,9 +9,9 @@ import java.io.File;
 
 public final class CoverResolver {
     private CoverResolver() {}
-    public static Bitmap embedded(ContentResolver resolver, String uriString) {
+    public static Bitmap embedded(Context context, String uriString) {
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        try { retriever.setDataSource(resolver, Uri.parse(uriString)); byte[] picture = retriever.getEmbeddedPicture(); return picture == null ? null : android.graphics.BitmapFactory.decodeByteArray(picture, 0, picture.length); } catch (RuntimeException ignored) { return null; } finally { retriever.release(); }
+        try { retriever.setDataSource(context, Uri.parse(uriString)); byte[] picture = retriever.getEmbeddedPicture(); return picture == null ? null : android.graphics.BitmapFactory.decodeByteArray(picture, 0, picture.length); } catch (RuntimeException ignored) { return null; } finally { retriever.release(); }
     }
     public static File sidecar(String audioPath) {
         if (audioPath == null) return null;
