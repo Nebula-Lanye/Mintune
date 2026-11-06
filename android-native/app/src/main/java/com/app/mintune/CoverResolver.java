@@ -11,7 +11,7 @@ public final class CoverResolver {
     private CoverResolver() {}
     public static Bitmap embedded(Context context, String uriString) {
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        try { retriever.setDataSource(context, Uri.parse(uriString)); byte[] picture = retriever.getEmbeddedPicture(); return picture == null ? null : android.graphics.BitmapFactory.decodeByteArray(picture, 0, picture.length); } catch (RuntimeException ignored) { return null; } finally { retriever.release(); }
+        try { retriever.setDataSource(context, Uri.parse(uriString)); byte[] picture = retriever.getEmbeddedPicture(); return picture == null ? null : android.graphics.BitmapFactory.decodeByteArray(picture, 0, picture.length); } catch (RuntimeException ignored) { return null; } finally { try { retriever.release(); } catch (java.io.IOException ignored) {} }
     }
     public static File sidecar(String audioPath) {
         if (audioPath == null) return null;
