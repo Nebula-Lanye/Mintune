@@ -29,6 +29,25 @@ jobs:
         with:
           gradle-version: "8.10"
 
+      - name: Restore Android release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          mkdir -p "$GITHUB_WORKSPACE/.secrets"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/.secrets/mintune-release.jks"
+          chmod 600 "$GITHUB_WORKSPACE/.secrets/mintune-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/.secrets/mintune-release.jks" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Build native Java release APK
         working-directory: android-native
         run: gradle --no-daemon assembleRelease
@@ -39,6 +58,12 @@ jobs:
           APK=$(find android-native/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
           test -n "$APK"
           cp "$APK" artifacts/mintune-native-java.apk
+
+      - name: Verify APK signature
+        run: |
+          APK=$(find android-native/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          SDKMANAGER=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)/apksigner
+          "$SDKMANAGER" verify --verbose "$APK"
 
       - name: Upload native Java APK
         uses: actions/upload-artifact@v5
