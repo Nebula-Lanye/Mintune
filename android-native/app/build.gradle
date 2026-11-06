@@ -1,0 +1,7 @@
+plugins { id 'com.android.application' }
+
+android { namespace 'com.app.mintune'; compileSdk 35
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    defaultConfig { applicationId 'com.app.mintune'; minSdk 24; targetSdk 35; versionCode 4805; versionName '0.4.805' }
+    buildTypes { release { minifyEnabled false; shrinkResources false; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' } }
+}

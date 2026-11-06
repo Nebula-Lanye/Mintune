@@ -1,5 +1,11 @@
 # Mintune 薄荷音乐
 
+## Android 原生 Java 迁移
+
+项目正在从 Expo/React Native 迁移到纯 Java Android 架构。现有移动端保留在根目录，作为迁移期间的回退版本；新的原生工程位于 `android-native/`，不使用 Kotlin、React Native 或 Expo，当前第一阶段已实现 Java 程序化界面、Android MediaStore 音乐扫描、SQLite 本地持久化、搜索、列表播放、暂停、上一首和下一首。
+
+原生 APK 通过 `.github/workflows/android-java-apk.yml` 构建。可在 GitHub Actions 中手动运行 `Build Native Java Android APK`，或推送 `android-java-v*` 标签触发构建。当前工作流生成未签名 release APK；正式发布前需要把现有签名文件接入 `android-native/app/build.gradle`，不要直接用未签名包覆盖正式版。
+
 Mintune 是一款以本地音乐为核心的移动端音乐播放器，使用 Expo、React Native、TypeScript 和 Expo Router 构建。应用默认不注入演示歌曲，用户可以主动扫描设备中的本地音频，并在本地数据库中保存歌曲元数据、收藏、播放列表和播放关系。
 
 ## 主要功能
