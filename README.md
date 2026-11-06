@@ -6,6 +6,8 @@
 
 原生 APK 通过 `.github/workflows/android-java-apk.yml` 构建。工作流会从 GitHub Secrets 读取 `KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS` 和 `KEY_PASSWORD`，临时恢复签名文件后生成正式签名 APK，并使用 `apksigner verify` 校验签名。可在 GitHub Actions 中手动运行 `Build Native Java Android APK`，或推送 `android-java-v*` 标签触发构建。签名文件只存在于 CI 临时目录，不会写入仓库。
 
+原生 Java 版现已将播放逻辑迁移到 `PlaybackService` 前台服务：切换到后台或锁屏后继续播放，并提供通知栏播放/暂停/停止控制。下一阶段继续迁移播放队列、系统媒体会话、封面歌词和十段均衡器。
+
 Mintune 是一款以本地音乐为核心的移动端音乐播放器，使用 Expo、React Native、TypeScript 和 Expo Router 构建。应用默认不注入演示歌曲，用户可以主动扫描设备中的本地音频，并在本地数据库中保存歌曲元数据、收藏、播放列表和播放关系。
 
 ## 主要功能

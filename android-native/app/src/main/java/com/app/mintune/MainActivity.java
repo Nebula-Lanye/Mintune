@@ -3,10 +3,10 @@ package com.app.mintune;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ContentUris;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,7 +21,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -36,7 +35,6 @@ public final class MainActivity extends Activity {
     private LinearLayout trackList;
     private TextView status;
     private EditText search;
-    private MediaPlayer player;
     private int playingIndex = -1;
 
     @Override public void onCreate(Bundle state) {
@@ -61,7 +59,7 @@ public final class MainActivity extends Activity {
     private TextView text(String value, int size, int color) { TextView view = new TextView(this); view.setText(value); view.setTextSize(size); view.setTextColor(color); return view; }
     private Button button(String label) { Button button = new Button(this); button.setText(label); button.setTextColor(Color.rgb(8, 26, 48)); button.setTextSize(12); button.setAllCaps(false); return button; }
     private boolean hasAudioPermission() { return Build.VERSION.SDK_INT < 33 ? checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED : checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED; }
-    private void requestAudioPermission() { requestPermissions(new String[]{Build.VERSION.SDK_INT < 33 ? Manifest.permission.READ_EXTERNAL_STORAGE : Manifest.permission.READ_MEDIA_AUDIO}, REQUEST_AUDIO); }
+    private void requestAudioPermission() { requestPermissions(Build.VERSION.SDK_INT < 33 ? new String[]{Manifest.permission.READ_EXTERNAL_STORAGE} : new String[]{Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.POST_NOTIFICATIONS}, REQUEST_AUDIO); }
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) { super.onRequestPermissionsResult(request, permissions, results); if (request == REQUEST_AUDIO && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) loadSavedTracks(); else status.setText("需要音乐访问权限才能扫描本地歌曲"); }
 
     private void loadSavedTracks() { executor.execute(() -> { List<LibraryDbHelper.Track> saved = database.all(); runOnUiThread(() -> { tracks.clear(); tracks.addAll(saved); status.setText(saved.size() + " 首歌曲"); renderTracks(); }); }); }
@@ -70,9 +68,8 @@ public final class MainActivity extends Activity {
 
     private void renderTracks() { if (trackList == null) return; trackList.removeAllViews(); String query = search == null ? "" : search.getText().toString().trim().toLowerCase(Locale.ROOT); for (int i = 0; i < tracks.size(); i++) { final int trackIndex = i; LibraryDbHelper.Track track = tracks.get(trackIndex); String haystack = (track.title + " " + track.artist + " " + track.album).toLowerCase(Locale.ROOT); if (!query.isEmpty() && !haystack.contains(query)) continue; TextView row = text((trackIndex == playingIndex ? "▶  " : "○  ") + track.title + "\n     " + track.artist + " · " + track.album, 15, trackIndex == playingIndex ? Color.rgb(94, 234, 212) : Color.WHITE); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(18, 8, 12, 8); row.setBackgroundColor(Color.rgb(20, 49, 78)); row.setOnClickListener(v -> play(trackIndex)); LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, 68); params.setMargins(0, 0, 0, 6); trackList.addView(row, params); } if (trackList.getChildCount() == 0) { TextView empty = text("还没有找到音乐\n点击右上角“扫描音乐”导入设备歌曲", 16, Color.rgb(154, 173, 194)); empty.setGravity(Gravity.CENTER); trackList.addView(empty, new LinearLayout.LayoutParams(-1, 180)); } }
 
-    private void play(int index) { if (index < 0 || index >= tracks.size()) return; releasePlayer(); LibraryDbHelper.Track track = tracks.get(index); player = new MediaPlayer(); try { player.setDataSource(this, Uri.parse(track.uri)); player.setOnPreparedListener(mp -> { mp.start(); playingIndex = index; status.setText("正在播放 · " + track.title); renderTracks(); }); player.setOnCompletionListener(mp -> playRelative(1)); player.prepareAsync(); } catch (IOException e) { status.setText("无法播放：" + track.title); releasePlayer(); } }
-    private void togglePlayback() { if (player == null) { if (!tracks.isEmpty()) play(0); } else if (player.isPlaying()) player.pause(); else player.start(); }
+    private void play(int index) { if (index < 0 || index >= tracks.size()) return; LibraryDbHelper.Track track = tracks.get(index); Intent intent = new Intent(this, PlaybackService.class).setAction(PlaybackService.ACTION_PLAY).putExtra(PlaybackService.EXTRA_URI, track.uri).putExtra(PlaybackService.EXTRA_TITLE, track.title).putExtra(PlaybackService.EXTRA_ARTIST, track.artist); if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent); else startService(intent); playingIndex = index; status.setText("正在播放 · " + track.title); renderTracks(); }
+    private void togglePlayback() { if (playingIndex < 0 && !tracks.isEmpty()) { play(0); return; } startService(new Intent(this, PlaybackService.class).setAction(PlaybackService.ACTION_TOGGLE)); }
     private void playRelative(int delta) { if (tracks.isEmpty()) return; int next = playingIndex < 0 ? 0 : (playingIndex + delta + tracks.size()) % tracks.size(); play(next); }
-    private void releasePlayer() { if (player != null) { player.stop(); player.release(); player = null; } }
-    @Override protected void onDestroy() { releasePlayer(); executor.shutdownNow(); database.close(); super.onDestroy(); }
+    @Override protected void onDestroy() { executor.shutdownNow(); database.close(); super.onDestroy(); }
 }
