@@ -1,4 +1,4 @@
-package com.app.mintune;
+package com.lkr2312.mintune;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -19,12 +19,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public final class PlaybackService extends Service {
-    public static final String ACTION_PLAY = "com.app.mintune.PLAY";
-    public static final String ACTION_TOGGLE = "com.app.mintune.TOGGLE";
-    public static final String ACTION_STOP = "com.app.mintune.STOP";
-    public static final String ACTION_SET_EQ = "com.app.mintune.SET_EQ";
-    public static final String ACTION_NEXT = "com.app.mintune.NEXT";
-    public static final String ACTION_PREVIOUS = "com.app.mintune.PREVIOUS";
+    public static final String ACTION_PLAY = "com.lkr2312.mintune.PLAY";
+    public static final String ACTION_TOGGLE = "com.lkr2312.mintune.TOGGLE";
+    public static final String ACTION_STOP = "com.lkr2312.mintune.STOP";
+    public static final String ACTION_SET_EQ = "com.lkr2312.mintune.SET_EQ";
+    public static final String ACTION_NEXT = "com.lkr2312.mintune.NEXT";
+    public static final String ACTION_PREVIOUS = "com.lkr2312.mintune.PREVIOUS";
     public static final String EXTRA_URI = "uri";
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_ARTIST = "artist";

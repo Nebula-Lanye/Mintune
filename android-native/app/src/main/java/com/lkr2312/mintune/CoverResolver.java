@@ -1,4 +1,4 @@
-package com.app.mintune;
+package com.lkr2312.mintune;
 
 import android.content.Context;
 import android.graphics.Bitmap;
