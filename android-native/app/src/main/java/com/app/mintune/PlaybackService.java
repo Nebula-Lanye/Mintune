@@ -8,6 +8,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
@@ -18,16 +21,19 @@ public final class PlaybackService extends Service {
     public static final String ACTION_PLAY = "com.app.mintune.PLAY";
     public static final String ACTION_TOGGLE = "com.app.mintune.TOGGLE";
     public static final String ACTION_STOP = "com.app.mintune.STOP";
+    public static final String ACTION_SET_EQ = "com.app.mintune.SET_EQ";
     public static final String EXTRA_URI = "uri";
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_ARTIST = "artist";
     private static final String CHANNEL_ID = "mintune_playback";
     private static final int NOTIFICATION_ID = 4805;
     private MediaPlayer player;
+    private MediaSession mediaSession;
+    private final EqualizerController equalizer = new EqualizerController();
     private String title = "Mintune";
     private String artist = "本地音乐";
 
-    @Override public void onCreate() { super.onCreate(); createChannel(); }
+    @Override public void onCreate() { super.onCreate(); createChannel(); mediaSession = new MediaSession(this, "Mintune"); mediaSession.setCallback(new MediaSession.Callback() { @Override public void onPlay() { if (player != null) { player.start(); updateNotification(); } } @Override public void onPause() { if (player != null) { player.pause(); updateNotification(); } } @Override public void onStop() { stopPlayback(); } }); mediaSession.setActive(true); }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) return START_NOT_STICKY;
@@ -35,6 +41,7 @@ public final class PlaybackService extends Service {
         if (ACTION_PLAY.equals(action)) play(intent.getStringExtra(EXTRA_URI), intent.getStringExtra(EXTRA_TITLE), intent.getStringExtra(EXTRA_ARTIST));
         else if (ACTION_TOGGLE.equals(action)) toggle();
         else if (ACTION_STOP.equals(action)) stopPlayback();
+        else if (ACTION_SET_EQ.equals(action)) { equalizer.setEnabled(intent.getBooleanExtra("enabled", true)); equalizer.setBandGain(intent.getIntExtra("band", -1), intent.getFloatExtra("gainDb", 0)); }
         return START_STICKY;
     }
 
@@ -47,7 +54,7 @@ public final class PlaybackService extends Service {
         try {
             player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
             player.setDataSource(this, Uri.parse(uri));
-            player.setOnPreparedListener(mp -> { mp.start(); updateNotification(); });
+            player.setOnPreparedListener(mp -> { equalizer.attach(mp.getAudioSessionId()); mp.start(); updateNotification(); });
             player.setOnCompletionListener(mp -> stopPlayback());
             player.prepareAsync();
             startForeground(NOTIFICATION_ID, buildNotification(false));
@@ -66,12 +73,16 @@ public final class PlaybackService extends Service {
         Intent stop = new Intent(this, PlaybackService.class).setAction(ACTION_STOP);
         PendingIntent stopPending = PendingIntent.getService(this, 3, stop, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
+        MediaMetadata metadata = new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, title).putString(MediaMetadata.METADATA_KEY_ARTIST, artist).build();
+        mediaSession.setMetadata(metadata);
+        mediaSession.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_STOP).setState(paused ? PlaybackState.STATE_PAUSED : PlaybackState.STATE_PLAYING, player == null ? 0 : player.getCurrentPosition(), 1f).build());
         builder.setSmallIcon(android.R.drawable.ic_media_play).setContentTitle(title).setContentText(artist).setContentIntent(content).setOngoing(!paused).setOnlyAlertOnce(true).setCategory(Notification.CATEGORY_TRANSPORT).addAction(new Notification.Action.Builder(paused ? android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause, paused ? "播放" : "暂停", togglePending).build()).addAction(new Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "停止", stopPending).build());
+        if (Build.VERSION.SDK_INT >= 21) builder.setStyle(new Notification.MediaStyle().setMediaSession(mediaSession.getSessionToken()).setShowActionsInCompactView(0));
         return builder.build();
     }
 
     private void updateNotification() { if (player != null) { boolean paused = !player.isPlaying(); ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID, buildNotification(paused)); } }
     private void createChannel() { if (Build.VERSION.SDK_INT >= 26) { NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Mintune 播放控制", NotificationManager.IMPORTANCE_LOW); channel.setDescription("后台播放和锁屏控制"); ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(channel); } }
-    @Override public void onDestroy() { releasePlayer(); super.onDestroy(); }
+    @Override public void onDestroy() { equalizer.release(); if (mediaSession != null) { mediaSession.setActive(false); mediaSession.release(); } releasePlayer(); super.onDestroy(); }
     @Override public IBinder onBind(Intent intent) { return null; }
 }
