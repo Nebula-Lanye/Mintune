@@ -14,6 +14,8 @@ import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ public final class PlaybackService extends Service {
     public static final String ACTION_SET_EQ = "com.lkr2312.mintune.SET_EQ";
     public static final String ACTION_NEXT = "com.lkr2312.mintune.NEXT";
     public static final String ACTION_PREVIOUS = "com.lkr2312.mintune.PREVIOUS";
+    public static final String ACTION_PROGRESS = "com.lkr2312.mintune.PROGRESS";
     public static final String EXTRA_URI = "uri";
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_ARTIST = "artist";
@@ -33,7 +36,7 @@ public final class PlaybackService extends Service {
     public static final String EXTRA_QUEUE_ARTIST = "queue_artist";
     public static final String EXTRA_QUEUE_INDEX = "queue_index";
     private static final String CHANNEL_ID = "mintune_playback";
-    private static final int NOTIFICATION_ID = 4805;
+    private static final int NOTIFICATION_ID = 4855;
     private MediaPlayer player;
     private MediaSession mediaSession;
     private final EqualizerController equalizer = new EqualizerController();
@@ -43,6 +46,8 @@ public final class PlaybackService extends Service {
     private final ArrayList<String> queueTitles = new ArrayList<>();
     private final ArrayList<String> queueArtists = new ArrayList<>();
     private int queueIndex;
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private final Runnable progressRunnable = new Runnable() { @Override public void run() { if (player != null) { Intent update = new Intent(ACTION_PROGRESS).setPackage(getPackageName()).putExtra("position", player.getCurrentPosition()).putExtra("duration", player.getDuration()).putExtra("title", title); sendBroadcast(update); progressHandler.postDelayed(this, 500); } } };
 
     @Override public void onCreate() { super.onCreate(); createChannel(); mediaSession = new MediaSession(this, "Mintune"); mediaSession.setCallback(new MediaSession.Callback() { @Override public void onPlay() { if (player != null) { player.start(); updateNotification(); } } @Override public void onPause() { if (player != null) { player.pause(); updateNotification(); } } @Override public void onSkipToNext() { playIndex(queueIndex + 1); } @Override public void onSkipToPrevious() { playIndex(queueIndex - 1); } @Override public void onStop() { stopPlayback(); } }); mediaSession.setActive(true); }
 
@@ -67,7 +72,7 @@ public final class PlaybackService extends Service {
         try {
             player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
             player.setDataSource(this, Uri.parse(uri));
-            player.setOnPreparedListener(mp -> { equalizer.attach(mp.getAudioSessionId()); mp.start(); updateNotification(); });
+            player.setOnPreparedListener(mp -> { equalizer.attach(mp.getAudioSessionId()); mp.start(); updateNotification(); progressHandler.removeCallbacks(progressRunnable); progressHandler.post(progressRunnable); });
             player.setOnCompletionListener(mp -> playIndex(queueIndex + 1));
             player.prepareAsync();
             startForeground(NOTIFICATION_ID, buildNotification(false));
@@ -77,7 +82,7 @@ public final class PlaybackService extends Service {
     private void toggle() { if (player == null) return; if (player.isPlaying()) player.pause(); else player.start(); updateNotification(); }
     private void playIndex(int index) { if (queueUris.isEmpty()) { stopPlayback(); return; } if (index < 0 || index >= queueUris.size()) { stopPlayback(); return; } queueIndex = index; String nextTitle = index < queueTitles.size() ? queueTitles.get(index) : "未知歌曲"; String nextArtist = index < queueArtists.size() ? queueArtists.get(index) : "未知艺人"; play(queueUris.get(index), nextTitle, nextArtist); }
     private void stopPlayback() { releasePlayer(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
-    private void releasePlayer() { if (player != null) { try { player.stop(); } catch (IllegalStateException ignored) {} player.release(); player = null; } }
+    private void releasePlayer() { progressHandler.removeCallbacks(progressRunnable); if (player != null) { try { player.stop(); } catch (IllegalStateException ignored) {} player.release(); player = null; } }
 
     private Notification buildNotification(boolean paused) {
         Intent open = new Intent(this, MainActivity.class);
