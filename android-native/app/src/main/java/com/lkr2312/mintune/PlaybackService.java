@@ -28,6 +28,7 @@ public final class PlaybackService extends Service {
     public static final String ACTION_NEXT = "com.lkr2312.mintune.NEXT";
     public static final String ACTION_PREVIOUS = "com.lkr2312.mintune.PREVIOUS";
     public static final String ACTION_PROGRESS = "com.lkr2312.mintune.PROGRESS";
+    public static final String ACTION_SEEK = "com.lkr2312.mintune.SEEK";
     public static final String EXTRA_URI = "uri";
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_ARTIST = "artist";
@@ -59,6 +60,7 @@ public final class PlaybackService extends Service {
         else if (ACTION_STOP.equals(action)) stopPlayback();
         else if (ACTION_NEXT.equals(action)) playIndex(queueIndex + 1);
         else if (ACTION_PREVIOUS.equals(action)) playIndex(queueIndex - 1);
+        else if (ACTION_SEEK.equals(action) && player != null) { try { int progress = intent.getIntExtra("progress", 0); player.seekTo((int)(player.getDuration() * (progress / 1000f))); } catch (IllegalStateException ignored) {} }
         else if (ACTION_SET_EQ.equals(action)) { equalizer.setEnabled(intent.getBooleanExtra("enabled", true)); equalizer.setBandGain(intent.getIntExtra("band", -1), intent.getFloatExtra("gainDb", 0)); }
         return START_STICKY;
     }
