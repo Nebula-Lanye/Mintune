@@ -36,7 +36,7 @@ import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_AUDIO = 1001;
-    private int BG = Color.rgb(8,26,48), SURFACE = Color.rgb(18,43,72), ALT = Color.rgb(25,55,87), MINT = Color.rgb(94,234,212), MUTED = Color.rgb(168,184,204), TEXT = TEXT;
+    private int BG = Color.rgb(8,26,48), SURFACE = Color.rgb(18,43,72), ALT = Color.rgb(25,55,87), MINT = Color.rgb(94,234,212), MUTED = Color.rgb(168,184,204), TEXT = Color.WHITE;
     private final List<LibraryDbHelper.Track> tracks = new ArrayList<>(), recent = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private LibraryDbHelper database; private LinearLayout rootView, pageHost, bottomNav, miniPlayer; private EditText search; private TextView pageTitle, pageSubtitle, status, activeLyrics; private ScrollView lyricsScroll; private SeekBar playerProgress; private boolean userSeeking, darkMode; private int page, playingIndex = -1, sortMode = 0; private boolean favoritesOnly; private List<LrcParser.Line> currentLyrics = new ArrayList<>();
