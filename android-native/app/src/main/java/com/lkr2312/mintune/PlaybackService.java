@@ -43,12 +43,13 @@ public final class PlaybackService extends Service {
     private final EqualizerController equalizer = new EqualizerController();
     private String title = "Mintune";
     private String artist = "本地音乐";
+    private String currentUri = "";
     private final ArrayList<String> queueUris = new ArrayList<>();
     private final ArrayList<String> queueTitles = new ArrayList<>();
     private final ArrayList<String> queueArtists = new ArrayList<>();
     private int queueIndex;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
-    private final Runnable progressRunnable = new Runnable() { @Override public void run() { if (player != null) { Intent update = new Intent(ACTION_PROGRESS).setPackage(getPackageName()).putExtra("position", player.getCurrentPosition()).putExtra("duration", player.getDuration()).putExtra("title", title); sendBroadcast(update); progressHandler.postDelayed(this, 500); } } };
+    private final Runnable progressRunnable = new Runnable() { @Override public void run() { if (player != null) { Intent update = new Intent(ACTION_PROGRESS).setPackage(getPackageName()).putExtra("position", player.getCurrentPosition()).putExtra("duration", player.getDuration()).putExtra("title", title).putExtra("artist", artist).putExtra("uri", currentUri).putExtra("playing", player.isPlaying()); sendBroadcast(update); progressHandler.postDelayed(this, 500); } } };
 
     @Override public void onCreate() { super.onCreate(); createChannel(); mediaSession = new MediaSession(this, "Mintune"); mediaSession.setCallback(new MediaSession.Callback() { @Override public void onPlay() { if (player != null) { player.start(); updateNotification(); } } @Override public void onPause() { if (player != null) { player.pause(); updateNotification(); } } @Override public void onSkipToNext() { playIndex(queueIndex + 1); } @Override public void onSkipToPrevious() { playIndex(queueIndex - 1); } @Override public void onStop() { stopPlayback(); } }); mediaSession.setActive(true); }
 
@@ -70,6 +71,7 @@ public final class PlaybackService extends Service {
         releasePlayer();
         title = nextTitle == null ? "未知歌曲" : nextTitle;
         artist = nextArtist == null ? "未知艺人" : nextArtist;
+        currentUri = uri;
         player = new MediaPlayer();
         try {
             player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
