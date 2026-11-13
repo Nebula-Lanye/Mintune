@@ -21,6 +21,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
+import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Switch;
